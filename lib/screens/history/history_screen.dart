@@ -1,45 +1,55 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import '../../services/user_service.dart';
+import '../../models/exercise_session_model.dart';
 
 @RoutePage()
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Şimdilik mock geçmiş verisi; ileride Hive'dan okunacak.
-    final sessions = [
-      (
-        date: 'Bugün',
-        exercise: 'Squat',
-        reps: 24,
-        duration: '12 dk',
-        formScore: 0.9
-      ),
-      (
-        date: 'Dün',
-        exercise: 'Plank',
-        reps: 3,
-        duration: '6 dk',
-        formScore: 0.85
-      ),
-      (
-        date: '2 gün önce',
-        exercise: 'Push-up',
-        reps: 18,
-        duration: '8 dk',
-        formScore: 0.8
-      ),
-    ];
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
 
+class _HistoryScreenState extends State<HistoryScreen> with AutoRouteAwareStateMixin<HistoryScreen> {
+  List<ExerciseSessionModel> _sessions = [];
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadSessions();
+  }
+
+  @override
+  void didPushNext() {
+    _loadSessions();
+  }
+  
+  @override
+  void didPopNext() {
+    _loadSessions();
+  }
+
+  void _loadSessions() {
+    setState(() {
+      _sessions = UserService().sessions;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    
     final theme = Theme.of(context);
+
+    // Calculate summary
+    final totalCount = _sessions.length;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Geçmiş'),
         centerTitle: false,
       ),
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -49,13 +59,13 @@ class HistoryScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Colors.black12,
+                    color: theme.shadowColor.withValues(alpha: 0.05),
                     blurRadius: 8,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -79,23 +89,17 @@ class HistoryScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Son 7 Gün',
+                          'Toplam',
                           style: theme.textTheme.labelMedium?.copyWith(
-                            color: Colors.grey[700],
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '5 egzersiz seansı tamamladın',
+                          '$totalCount egzersiz seansı tamamladın',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Form kaliten giderek artıyor, böyle devam et!',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                       ],
@@ -109,20 +113,26 @@ class HistoryScreen extends StatelessWidget {
               'Geçmiş seansların',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
             Expanded(
-              child: ListView.separated(
-                itemCount: sessions.length,
+              child: _sessions.isEmpty 
+                  ? Center(child: Text("Henüz egzersiz kaydı yok.", style: TextStyle(color: Colors.grey)))
+                  : ListView.separated(
+                itemCount: _sessions.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, index) {
-                  final s = sessions[index];
-                  final scorePercent = (s.formScore * 100).round();
+                  final s = _sessions[index];
+                  // Date format helper
+                  final d = s.date;
+                  final dateStr = "${d.day}.${d.month}.${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}";
+                  
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.cardColor,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -131,10 +141,12 @@ class HistoryScreen extends StatelessWidget {
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
+                            color: theme.brightness == Brightness.dark
+                                ? const Color(0xFF37474F)
+                                : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.fitness_center_rounded),
+                          child: Icon(Icons.fitness_center_rounded, color: theme.colorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -142,34 +154,35 @@ class HistoryScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                s.exercise,
+                                s.exerciseName,
                                 style: theme.textTheme.titleSmall?.copyWith(
                                   fontWeight: FontWeight.w700,
+                                  color: theme.colorScheme.onSurface,
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                '${s.date} • ${{'Squat': 'Bacak', 'Push-up': 'Üst vücut', 'Plank': 'Core'}[s.exercise] ?? 'Egzersiz'}',
+                                dateStr, // Date
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[600],
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Doğru tekrar: ${s.reps} • Süre: ${s.duration}',
+                                'Süre: ${s.durationMinutes} dk',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[700],
+                                  color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Column(
+                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '%$scorePercent',
+                              '%${s.accuracyScore}',
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFF00C853),
@@ -178,7 +191,7 @@ class HistoryScreen extends StatelessWidget {
                             Text(
                               'Form',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.grey[600],
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],

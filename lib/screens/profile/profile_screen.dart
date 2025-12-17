@@ -1,5 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import '../../services/user_service.dart';
 
 @RoutePage()
 class ProfileScreen extends StatefulWidget {
@@ -10,8 +11,34 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _name = 'Elif Tan';
-  String _email = 'elif@example.com';
+  String _name = '...'; 
+  String _email = '...';
+  // Stats
+  String _totalSessions = '0';
+  String _totalTime = '0d';
+  String _streak = '0 gün';
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = UserService().user; // Sync access now possible usually, but keeps future structure if needed or just direct
+    // Actually UserService().user is synchronous now if box is open.
+    final stats = UserService().getStats();
+    
+    if (mounted) {
+      setState(() {
+        _name = user.name;
+        _email = user.email;
+        _totalSessions = stats['sessions']!;
+        _totalTime = stats['time']!;
+        _streak = stats['streak']!;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('Profil'),
         centerTitle: false,
       ),
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -32,16 +59,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
-                    color: Colors.black12,
+                    color: theme.shadowColor.withValues(alpha: 0.05),
                     blurRadius: 10,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
+
               child: Row(
                 children: [
                   CircleAvatar(
@@ -67,13 +95,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _name,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           _email,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[700],
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -91,32 +120,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 16),
 
             // İstatistikler
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Toplam seans',
-                    value: '12',
-                    icon: Icons.fitness_center_rounded,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Toplam süre',
-                    value: '3s 20d',
-                    icon: Icons.timer_rounded,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Streak',
-                    value: '5 gün',
-                    icon: Icons.local_fire_department_rounded,
-                  ),
-                ),
-              ],
+            // İstatistikler (Reactive)
+            ValueListenableBuilder(
+              valueListenable: UserService().sessionListenable,
+              builder: (context, box, _) {
+                final stats = UserService().getStats();
+                return Row(
+                  children: [
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Toplam seans',
+                        value: stats['sessions']!,
+                        icon: Icons.fitness_center_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Toplam süre',
+                        value: stats['time']!,
+                        icon: Icons.timer_rounded,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        label: 'Streak',
+                        value: stats['streak']!,
+                        icon: Icons.local_fire_department_rounded,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
 
@@ -130,7 +166,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.cardColor,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -140,13 +176,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'Kilo verme ve dayanıklılık artırma',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Haftada en az 3 seans yap, formunu koru ve sakatlanmadan geliş.',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey[700],
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -199,14 +236,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
 
     if (result == true) {
-      setState(() {
-        _name = nameController.text.trim().isEmpty
-            ? _name
-            : nameController.text.trim();
-        _email = emailController.text.trim().isEmpty
-            ? _email
-            : emailController.text.trim();
-      });
+      final newName = nameController.text.trim().isEmpty ? _name : nameController.text.trim();
+      final newEmail = emailController.text.trim().isEmpty ? _email : emailController.text.trim();
+      
+      await UserService().updateProfile(name: newName, email: newEmail);
+      
+      if (mounted) {
+        setState(() {
+          _name = newName;
+          _email = newEmail;
+        });
+      }
     }
   }
 }
@@ -228,25 +268,26 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey[700]),
+          Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
           const SizedBox(height: 4),
           Text(
             value,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
         ],

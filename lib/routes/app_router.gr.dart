@@ -15,16 +15,6 @@ abstract class _$AppRouter extends RootStackRouter {
 
   @override
   final Map<String, PageFactory> pagesMap = {
-    ExercisePreviewRoute.name: (routeData) {
-      final args = routeData.argsAs<ExercisePreviewRouteArgs>();
-      return AutoRoutePage<dynamic>(
-        routeData: routeData,
-        child: ExercisePreviewScreen(
-          key: args.key,
-          exerciseName: args.exerciseName,
-        ),
-      );
-    },
     ExerciseSelectRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -78,44 +68,6 @@ abstract class _$AppRouter extends RootStackRouter {
       );
     },
   };
-}
-
-/// generated route for
-/// [ExercisePreviewScreen]
-class ExercisePreviewRoute extends PageRouteInfo<ExercisePreviewRouteArgs> {
-  ExercisePreviewRoute({
-    Key? key,
-    required String exerciseName,
-    List<PageRouteInfo>? children,
-  }) : super(
-          ExercisePreviewRoute.name,
-          args: ExercisePreviewRouteArgs(
-            key: key,
-            exerciseName: exerciseName,
-          ),
-          initialChildren: children,
-        );
-
-  static const String name = 'ExercisePreviewRoute';
-
-  static const PageInfo<ExercisePreviewRouteArgs> page =
-      PageInfo<ExercisePreviewRouteArgs>(name);
-}
-
-class ExercisePreviewRouteArgs {
-  const ExercisePreviewRouteArgs({
-    this.key,
-    required this.exerciseName,
-  });
-
-  final Key? key;
-
-  final String exerciseName;
-
-  @override
-  String toString() {
-    return 'ExercisePreviewRouteArgs{key: $key, exerciseName: $exerciseName}';
-  }
 }
 
 /// generated route for

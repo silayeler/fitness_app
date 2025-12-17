@@ -31,18 +31,19 @@ class MainTabPage extends StatelessWidget {
         );
       },
       bottomNavigationBuilder: (context, tabsRouter) {
+        final theme = Theme.of(context);
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black12,
+                color: theme.shadowColor.withValues(alpha: 0.05),
                 blurRadius: 8,
-                offset: Offset(0, -2),
+                offset: const Offset(0, -2),
               ),
             ],
           ),
@@ -55,7 +56,7 @@ class MainTabPage extends StatelessWidget {
               backgroundColor: Colors.transparent,
               elevation: 0,
               selectedItemColor: const Color(0xFF00C853),
-              unselectedItemColor: Colors.grey[600],
+              unselectedItemColor: theme.colorScheme.onSurfaceVariant,
               showUnselectedLabels: true,
               items: const [
                 BottomNavigationBarItem(

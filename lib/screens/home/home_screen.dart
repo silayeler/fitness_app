@@ -1,16 +1,76 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import '../../services/user_service.dart';
 
 @RoutePage()
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<HomeScreen> {
+  String _name = '...'; 
+  String _lastExerciseTitle = 'Henüz yok';
+  String _lastExerciseSubtitle = 'Hadi ilk antrenmanını yap!';
+  double _dailyProgress = 0.0;
+  String _dailyProgressText = '0%';
+  String _dailyTargetText = '3 Egzersiz Seansı';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData(); // Updated method name
+  }
+
+  @override
+  void didPushNext() {
+    _loadData(); 
+  }
+  
+  @override
+  void didPopNext() {
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    final user = UserService().user; // Hive box is sync
+    final sessions = UserService().sessions;
+    
+    String title = 'Henüz yok';
+    String subtitle = 'Hadi ilk antrenmanını yap!';
+    
+    if (sessions.isNotEmpty) {
+      final last = sessions.first; // Newest is first
+      title = "${last.date.day}.${last.date.month} - ${last.exerciseName}";
+      subtitle = "${last.durationMinutes} dakika çalıştın!";
+    }
+    
+    // Progress
+    final progressData = UserService().getTodayProgress();
+    final double prog = progressData['progress'];
+    final int percent = progressData['percent'];
+    final int completed = progressData['completed'];
+
+    if (mounted) {
+      setState(() {
+        _name = user.name.split(' ')[0];
+        _lastExerciseTitle = title;
+        _lastExerciseSubtitle = subtitle;
+        _dailyProgress = prog;
+        _dailyProgressText = '$percent%';
+        _dailyTargetText = '$completed / 3 Tamamlandı'; // Showing count instead of static "3 Egzersiz Seansı"
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F5F7),
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -18,32 +78,44 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Üst başlık
-              Text(
-                'Merhaba,',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Text(
-                'Elif!',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF00C853),
-                ),
+              // Reactive Header
+              ValueListenableBuilder(
+                valueListenable: UserService().userListenable,
+                builder: (context, box, _) {
+                  final currentName = UserService().user.name.split(' ')[0];
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Merhaba,',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        '$currentName!',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF00C853), // Keep brand color
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 16),
-
-              // Ana kart
+              
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: theme.cardColor,
                     borderRadius: BorderRadius.circular(24),
-                    boxShadow: const [
+                    boxShadow: [
                       BoxShadow(
-                        color: Colors.black12,
+                        color: theme.shadowColor.withValues(alpha: 0.05),
                         blurRadius: 12,
-                        offset: Offset(0, 6),
+                        offset: const Offset(0, 6),
                       ),
                     ],
                   ),
@@ -56,6 +128,7 @@ class HomeScreen extends StatelessWidget {
                         'Bugün hedefin:',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -63,7 +136,9 @@ class HomeScreen extends StatelessWidget {
                       // Hedef kartı
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4FFF7),
+                          color: theme.brightness == Brightness.dark 
+                              ? const Color(0xFF1B5E20).withValues(alpha: 0.3) // Darker green for dark mode
+                              : const Color(0xFFF4FFF7),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         padding: const EdgeInsets.all(16),
@@ -73,7 +148,9 @@ class HomeScreen extends StatelessWidget {
                               width: 52,
                               height: 52,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE0F8EA),
+                                color: theme.brightness == Brightness.dark 
+                                    ? const Color(0xFF00C853).withValues(alpha: 0.2)
+                                    : const Color(0xFFE0F8EA),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: const Icon(
@@ -93,7 +170,7 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '3 Egzersiz Seansı',
+                                    'Günlük Hedef: 3 Seans',
                                     style:
                                         theme.textTheme.titleMedium?.copyWith(
                                       fontWeight: FontWeight.w700,
@@ -104,7 +181,7 @@ class HomeScreen extends StatelessWidget {
                                     'Bugün planlanan antrenmanını tamamla.',
                                     style:
                                         theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey[600],
+                                      color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -126,7 +203,9 @@ class HomeScreen extends StatelessWidget {
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF7EC),
+                          color: theme.brightness == Brightness.dark
+                              ? const Color(0xFFE65100).withValues(alpha: 0.2)
+                              : const Color(0xFFFFF7EC),
                           borderRadius: BorderRadius.circular(18),
                         ),
                         padding: const EdgeInsets.all(16),
@@ -136,7 +215,9 @@ class HomeScreen extends StatelessWidget {
                               width: 52,
                               height: 52,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFE2C2),
+                                color: theme.brightness == Brightness.dark
+                                    ? const Color(0xFFFF9800).withValues(alpha: 0.2)
+                                    : const Color(0xFFFFE2C2),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: const Icon(
@@ -156,7 +237,7 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Dün 20 squat yaptın',
+                                    _lastExerciseTitle,
                                     style:
                                         theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
@@ -164,10 +245,10 @@ class HomeScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Harika bir çalışmaydı!',
+                                    _lastExerciseSubtitle,
                                     style:
                                         theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey[600],
+                                      color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ],
@@ -190,9 +271,9 @@ class HomeScreen extends StatelessWidget {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(999),
                         child: LinearProgressIndicator(
-                          value: 0.75,
+                          value: _dailyProgress,
                           minHeight: 10,
-                          backgroundColor: const Color(0xFFE5E7EB),
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
                           valueColor:
                               const AlwaysStoppedAnimation(Color(0xFF00C853)),
                         ),
@@ -201,7 +282,7 @@ class HomeScreen extends StatelessWidget {
                       Align(
                         alignment: Alignment.centerRight,
                         child: Text(
-                          '75%',
+                          '$_dailyProgressText ($_dailyTargetText)',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: Colors.grey[700],
                           ),
@@ -213,7 +294,7 @@ class HomeScreen extends StatelessWidget {
                         child: Text(
                           '"Her gün biraz daha iyi ol!"',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[600],
+                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                             fontStyle: FontStyle.italic,
                           ),
                         ),
@@ -229,5 +310,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
-

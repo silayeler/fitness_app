@@ -2,7 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/widgets.dart'; // Key tipi için
 
 
-import '../screens/exercise/exercise_preview_screen.dart';
+
 import '../screens/exercise/exercise_select_screen.dart';
 import '../screens/exercise/exercise_session_screen.dart';
 import '../screens/history/history_screen.dart';
@@ -28,7 +28,7 @@ class AppRouter extends _$AppRouter {
           ],
         ),
         AutoRoute(page: OnboardingRoute.page, path: '/onboarding'),
-        AutoRoute(page: ExercisePreviewRoute.page, path: '/exercise-preview'),
+
         AutoRoute(page: ExerciseSessionRoute.page, path: '/exercise-session'),
         AutoRoute(page: SettingsRoute.page, path: '/settings'),
       ];
