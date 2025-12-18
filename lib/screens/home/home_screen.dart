@@ -1,6 +1,8 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
+import '../../services/notification_service.dart';
+import '../../routes/app_router.dart';
 
 @RoutePage()
 class HomeScreen extends StatefulWidget {
@@ -21,7 +23,12 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
   @override
   void initState() {
     super.initState();
-    _loadData(); // Updated method name
+    _initNotifications(); // Request permissions and load data
+  }
+
+  Future<void> _initNotifications() async {
+    await NotificationService().requestPermissions();
+    _loadData();
   }
 
   @override
@@ -70,6 +77,18 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
     final theme = Theme.of(context);
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Ana Sayfa'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              context.router.push(SettingsRoute());
+            },
+          ),
+        ],
+      ),
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
@@ -77,8 +96,7 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Üst başlık
-              // Reactive Header
+              // Üst başlık (Greeting)
               ValueListenableBuilder(
                 valueListenable: UserService().userListenable,
                 builder: (context, box, _) {
@@ -87,17 +105,10 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Merhaba,',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        '$currentName!',
+                        'Merhaba, $currentName!',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF00C853), // Keep brand color
+                          color: const Color(0xFF00C853),
                         ),
                       ),
                     ],

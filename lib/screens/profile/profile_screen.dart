@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
+import '../../routes/app_router.dart';
 
 @RoutePage()
 class ProfileScreen extends StatefulWidget {
@@ -12,7 +13,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _name = '...'; 
-  String _email = '...';
+
   // Stats
   String _totalSessions = '0';
   String _totalTime = '0d';
@@ -32,7 +33,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _name = user.name;
-        _email = user.email;
+
         _totalSessions = stats['sessions']!;
         _totalTime = stats['time']!;
         _streak = stats['streak']!;
@@ -48,6 +49,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('Profil'),
         centerTitle: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              context.router.push(SettingsRoute());
+            },
+          ),
+        ],
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
       body: Padding(
@@ -99,12 +108,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          _email,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+
                       ],
                     ),
                   ),
@@ -200,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _showEditProfileDialog(BuildContext context) async {
     final nameController = TextEditingController(text: _name);
-    final emailController = TextEditingController(text: _email);
+
 
     final result = await showDialog<bool>(
       context: context,
@@ -215,10 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: const InputDecoration(labelText: 'Ad Soyad'),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
+
             ],
           ),
           actions: [
@@ -237,14 +238,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result == true) {
       final newName = nameController.text.trim().isEmpty ? _name : nameController.text.trim();
-      final newEmail = emailController.text.trim().isEmpty ? _email : emailController.text.trim();
-      
-      await UserService().updateProfile(name: newName, email: newEmail);
+      await UserService().updateProfile(name: newName);
       
       if (mounted) {
         setState(() {
           _name = newName;
-          _email = newEmail;
         });
       }
     }

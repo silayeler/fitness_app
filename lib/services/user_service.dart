@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/user_model.dart';
 import '../models/exercise_session_model.dart';
+import 'notification_service.dart';
 
 class UserService {
   static const String _userBoxName = 'userBox';
@@ -41,10 +42,9 @@ class UserService {
     return _userBox.get('currentUser')!;
   }
 
-  Future<void> updateProfile({String? name, String? email, double? weight, double? height, String? goal}) async {
+  Future<void> updateProfile({String? name, double? weight, double? height, String? goal}) async {
     final currentUser = user;
     if (name != null) currentUser.name = name;
-    if (email != null) currentUser.email = email;
     if (weight != null) currentUser.weight = weight;
     if (height != null) currentUser.height = height;
     if (goal != null) currentUser.goal = goal;
@@ -61,6 +61,9 @@ class UserService {
   bool get isDarkMode => _settingsBox.get('darkMode', defaultValue: false);
   bool get notificationsEnabled => _settingsBox.get('notificationsEnabled', defaultValue: true);
   bool get soundEnabled => _settingsBox.get('soundEnabled', defaultValue: true);
+  bool get vibrationEnabled => _settingsBox.get('vibrationEnabled', defaultValue: true);
+  int get reminderHour => _settingsBox.get('reminderHour', defaultValue: 8);
+  int get reminderMinute => _settingsBox.get('reminderMinute', defaultValue: 0);
 
   Future<void> setDarkMode(bool value) async {
     await _settingsBox.put('darkMode', value);
@@ -68,10 +71,35 @@ class UserService {
 
   Future<void> setNotificationsEnabled(bool value) async {
     await _settingsBox.put('notificationsEnabled', value);
-  }
+    
+    if (value) {
+      await NotificationService().requestPermissions();
+      // Schedule with current time
+      final h = reminderHour;
+      final m = reminderMinute;
+      await NotificationService().scheduleDailyReminder(h, m);
+    } else {
+      await NotificationService().cancelDailyReminder();
+    }
+    }
+
 
   Future<void> setSoundEnabled(bool value) async {
     await _settingsBox.put('soundEnabled', value);
+  }
+
+  Future<void> setVibrationEnabled(bool value) async {
+    await _settingsBox.put('vibrationEnabled', value);
+  }
+
+  Future<void> setReminderTime(int hour, int minute) async {
+    await _settingsBox.put('reminderHour', hour);
+    await _settingsBox.put('reminderMinute', minute);
+    
+    // Reschedule if enabled
+    if (notificationsEnabled) {
+       await NotificationService().scheduleDailyReminder(hour, minute);
+    }
   }
 
   // --- Session History Management ---
@@ -137,5 +165,10 @@ class UserService {
       'progress': progress,
       'percent': (progress * 100).toInt(),
     };
+  }
+
+
+  Future<void> clearAllData() async {
+    await _sessionBox.clear();
   }
 }

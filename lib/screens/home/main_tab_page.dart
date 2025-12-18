@@ -16,20 +16,7 @@ class MainTabPage extends StatelessWidget {
         HistoryRoute(),
         ProfileRoute(),
       ],
-      appBarBuilder: (context, tabsRouter) {
-        return AppBar(
-          title: const Text('Mobil Fitness Asistanı'),
-          centerTitle: false,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.settings_outlined),
-              onPressed: () {
-                context.router.push(const SettingsRoute());
-              },
-            ),
-          ],
-        );
-      },
+
       bottomNavigationBuilder: (context, tabsRouter) {
         final theme = Theme.of(context);
         return Container(
