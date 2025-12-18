@@ -61,6 +61,22 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const ProfileScreen(),
       );
     },
+    ProgramDetailRoute.name: (routeData) {
+      final args = routeData.argsAs<ProgramDetailRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: ProgramDetailScreen(
+          key: args.key,
+          program: args.program,
+        ),
+      );
+    },
+    ProgramsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const ProgramsScreen(),
+      );
+    },
     SettingsRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -188,6 +204,58 @@ class ProfileRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'ProfileRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [ProgramDetailScreen]
+class ProgramDetailRoute extends PageRouteInfo<ProgramDetailRouteArgs> {
+  ProgramDetailRoute({
+    Key? key,
+    required ProgramModel program,
+    List<PageRouteInfo>? children,
+  }) : super(
+          ProgramDetailRoute.name,
+          args: ProgramDetailRouteArgs(
+            key: key,
+            program: program,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'ProgramDetailRoute';
+
+  static const PageInfo<ProgramDetailRouteArgs> page =
+      PageInfo<ProgramDetailRouteArgs>(name);
+}
+
+class ProgramDetailRouteArgs {
+  const ProgramDetailRouteArgs({
+    this.key,
+    required this.program,
+  });
+
+  final Key? key;
+
+  final ProgramModel program;
+
+  @override
+  String toString() {
+    return 'ProgramDetailRouteArgs{key: $key, program: $program}';
+  }
+}
+
+/// generated route for
+/// [ProgramsScreen]
+class ProgramsRoute extends PageRouteInfo<void> {
+  const ProgramsRoute({List<PageRouteInfo>? children})
+      : super(
+          ProgramsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'ProgramsRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

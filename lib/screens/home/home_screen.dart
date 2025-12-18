@@ -125,7 +125,10 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
               ValueListenableBuilder(
                 valueListenable: UserService().userListenable,
                 builder: (context, box, _) {
-                  final currentName = UserService().user.name.split(' ')[0];
+                  final user = UserService().user;
+                  final currentName = user.name.split(' ')[0];
+                  final isGuest = user.name == 'Misafir';
+                  
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -136,6 +139,38 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                           color: const Color(0xFF00C853),
                         ),
                       ),
+                      if (isGuest) ...[
+                        const SizedBox(height: 16),
+                        GestureDetector(
+                          onTap: () => context.router.push(const ProfileRoute()),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF00C853).withValues(alpha: 0.3)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.person_add_rounded, color: Color(0xFF00C853)),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Henüz bir profil oluşturmadın! Adını profilinden girerek başlayabilirsin.',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF00C853)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   );
                 },
@@ -197,6 +232,82 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
               
               // Weekly Graph (Added)
               const WeeklyActivityGraph(),
+
+              const SizedBox(height: 24),
+
+              // Programs Entry Point
+              GestureDetector(
+                onTap: () {
+                   context.router.push(const ProgramsRoute());
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF1565C0), // Dark Blue
+                        const Color(0xFF1E88E5), // Lighter Blue
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF1565C0).withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.calendar_month_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Özel Programlar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '30 Günlük meydan okumalar ve planlar.',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
               const SizedBox(height: 24),
               

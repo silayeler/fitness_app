@@ -16,6 +16,15 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => context.router.maybePop(),
         ),
         title: const Text('Ayarlar'),
+        centerTitle: false,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: Theme.of(context).textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: Theme.of(context).colorScheme.onSurface,
+          letterSpacing: -0.5,
+        ),
       ),
       body: ListView(
         children: [
@@ -126,13 +135,13 @@ class SettingsScreen extends StatelessWidget {
           const Divider(),
           const _SectionHeader(title: 'Hesap ve Veri Yönetimi'),
           ListTile(
-            leading: const Icon(Icons.track_changes_rounded),
-            title: const Text('Hedefleri Güncelle'),
+            leading: const Icon(Icons.person_outline_rounded),
+            title: const Text('Profili Güncelle'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => const _UpdateGoalsDialog(),
+                builder: (context) => const _UpdateProfileDialog(),
               );
             },
           ),
@@ -207,14 +216,15 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _UpdateGoalsDialog extends StatefulWidget {
-  const _UpdateGoalsDialog();
+class _UpdateProfileDialog extends StatefulWidget {
+  const _UpdateProfileDialog();
 
   @override
-  State<_UpdateGoalsDialog> createState() => _UpdateGoalsDialogState();
+  State<_UpdateProfileDialog> createState() => _UpdateProfileDialogState();
 }
 
-class _UpdateGoalsDialogState extends State<_UpdateGoalsDialog> {
+class _UpdateProfileDialogState extends State<_UpdateProfileDialog> {
+  final _nameController = TextEditingController();
   final _weightController = TextEditingController();
   String? _selectedGoal;
 
@@ -229,6 +239,7 @@ class _UpdateGoalsDialogState extends State<_UpdateGoalsDialog> {
   void initState() {
     super.initState();
     final user = UserService().user;
+    _nameController.text = user.name == 'Misafir' ? '' : user.name;
     if (user.weight != null) {
       _weightController.text = user.weight.toString();
     }
@@ -241,6 +252,7 @@ class _UpdateGoalsDialogState extends State<_UpdateGoalsDialog> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _weightController.dispose();
     super.dispose();
   }
@@ -248,39 +260,54 @@ class _UpdateGoalsDialogState extends State<_UpdateGoalsDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Hedefleri Güncelle'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _weightController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: 'Güncel Kilo (kg)',
-              suffixText: 'kg',
-              border: OutlineInputBorder(),
+      title: const Text('Profili Güncelle'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Adınız',
+                hintText: 'Örn: Elif',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_outline),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedGoal,
-            decoration: const InputDecoration(
-              labelText: 'Ana Hedef',
-              border: OutlineInputBorder(),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _weightController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Güncel Kilo (kg)',
+                suffixText: 'kg',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.monitor_weight_outlined),
+              ),
             ),
-            items: _goals.map((goal) {
-              return DropdownMenuItem(
-                value: goal,
-                child: Text(goal),
-              );
-            }).toList(),
-            onChanged: (val) {
-              setState(() {
-                _selectedGoal = val;
-              });
-            },
-          ),
-        ],
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedGoal,
+              decoration: const InputDecoration(
+                labelText: 'Ana Hedef',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.track_changes_outlined),
+              ),
+              items: _goals.map((goal) {
+                return DropdownMenuItem(
+                  value: goal,
+                  child: Text(goal),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  _selectedGoal = val;
+                });
+              },
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -290,13 +317,23 @@ class _UpdateGoalsDialogState extends State<_UpdateGoalsDialog> {
         ElevatedButton(
           onPressed: () {
              final weight = double.tryParse(_weightController.text.replaceAll(',', '.'));
-             if (weight != null && _selectedGoal != null) {
-               UserService().updateProfile(weight: weight, goal: _selectedGoal);
+             final name = _nameController.text.trim();
+             
+             if (name.isNotEmpty && weight != null && _selectedGoal != null) {
+               UserService().updateProfile(
+                 name: name,
+                 weight: weight, 
+                 goal: _selectedGoal
+               );
                Navigator.pop(context);
                
                // Show simple feedback
                ScaffoldMessenger.of(context).showSnackBar(
-                 const SnackBar(content: Text('Hedefler güncellendi!')),
+                 const SnackBar(content: Text('Profil güncellendi!')),
+               );
+             } else {
+               ScaffoldMessenger.of(context).showSnackBar(
+                 const SnackBar(content: Text('Lütfen tüm alanları doldurun.')),
                );
              }
           },

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:math'; // Import math
 import '../models/user_model.dart';
 import '../models/exercise_session_model.dart';
 import 'notification_service.dart';
@@ -35,7 +36,7 @@ class UserService {
   UserModel get user {
     if (_userBox.isEmpty) {
       // Create default
-      final defaultUser = UserModel(name: 'Elif Tan', email: 'elif@example.com');
+      final defaultUser = UserModel(name: 'Misafir', email: '');
       _userBox.put('currentUser', defaultUser);
       return defaultUser;
     }
@@ -100,6 +101,14 @@ class UserService {
     if (notificationsEnabled) {
        await NotificationService().scheduleDailyReminder(hour, minute);
     }
+  }
+
+  // --- Onboarding Persistence ---
+
+  bool get onboardingSeen => _settingsBox.get('onboardingSeen', defaultValue: false);
+
+  Future<void> setOnboardingSeen() async {
+    await _settingsBox.put('onboardingSeen', true);
   }
 
   // --- Session History Management ---
@@ -170,5 +179,69 @@ class UserService {
 
   Future<void> clearAllData() async {
     await _sessionBox.clear();
+  }
+
+  // --- Gamification Logic ---
+
+  Future<void> addXp(int amount) async {
+    final currentUser = user;
+    currentUser.currentXp += amount;
+
+    // Level Calculation: Level = sqrt(XP / 100) + 1
+    // 0 XP -> Lvl 1
+    // 100 XP -> Lvl 2
+    // 400 XP -> Lvl 3
+    int newLevel = (sqrt(currentUser.currentXp / 100)).floor() + 1;
+    
+    if (newLevel > currentUser.currentLevel) {
+      currentUser.currentLevel = newLevel;
+      // TODO: Show Level Up Dialog (handled by UI observing userListenable)
+    }
+    
+    await currentUser.save();
+    
+    // Check Badges
+    await _checkBadges();
+  }
+
+  Future<void> _checkBadges() async {
+    final currentUser = user;
+    final earned = currentUser.earnedBadges.toSet();
+    bool changed = false;
+
+    // Check "First Step"
+    if (!earned.contains('first_step')) {
+      if (sessions.isNotEmpty) {
+        currentUser.earnedBadges.add('first_step');
+        changed = true;
+      }
+    }
+
+    // Check "Consistent" (3 days streak)
+    if (!earned.contains('consistent')) {
+      final stats = getStats();
+      // Parsing "3 gün" string or refactoring getStats to return int is better.
+      // For now, let's just check stats['streak']
+      // This is a bit fragile string parsing but works for MVP
+      String streakStr = stats['streak'] ?? '0';
+      int streak = int.tryParse(streakStr.split(' ')[0]) ?? 0;
+      
+      if (streak >= 3) {
+        currentUser.earnedBadges.add('consistent');
+        changed = true;
+      }
+    }
+
+    // Check "Champion" (Level 10)
+    if (!earned.contains('champion')) {
+      if (currentUser.currentLevel >= 10) {
+        currentUser.earnedBadges.add('champion');
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await currentUser.save();
+    }
   }
 }

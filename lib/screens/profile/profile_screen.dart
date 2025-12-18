@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../widgets/bmi_gauge_card.dart';
 import '../../routes/app_router.dart';
+import '../../data/badge_data.dart'; // Import this
+
 
 @RoutePage()
 class ProfileScreen extends StatefulWidget {
@@ -83,7 +85,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -195,6 +197,183 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 24),
 
+            const SizedBox(height: 24),
+            
+            // Level Progress Card
+            ValueListenableBuilder(
+              valueListenable: UserService().userListenable,
+              builder: (context, box, _) {
+                final user = UserService().user; // Get fresh user
+                
+                // XP Calculation for current level display
+                // Level = sqrt(XP/100) + 1
+                // XP for current level start: (L-1)^2 * 100
+                // XP for next level start: L^2 * 100
+                int currentLvl = user.currentLevel;
+                int nextLvl = currentLvl + 1;
+                
+                int xpForCurrent = 100 * (currentLvl - 1) * (currentLvl - 1);
+                int xpForNext = 100 * currentLvl * currentLvl;
+                int xpNeeded = xpForNext - xpForCurrent;
+                int xpProgress = user.currentXp - xpForCurrent;
+                
+                double progress = (xpProgress / xpNeeded).clamp(0.0, 1.0);
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SEVİYE $currentLvl',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 24,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                              Text(
+                                '${user.currentXp} XP',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.star_rounded, color: Colors.amber, size: 32),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 12,
+                          backgroundColor: Colors.black.withValues(alpha: 0.2),
+                          valueColor: const AlwaysStoppedAnimation(Colors.amber),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                           Text(
+                            'Seviye $currentLvl', 
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)
+                          ),
+                           Text(
+                            'Seviye $nextLvl', 
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 24),
+            
+            // Badges Section
+            Text(
+              'Rozetler',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            ValueListenableBuilder(
+              valueListenable: UserService().userListenable,
+              builder: (context, box, _) {
+                final user = UserService().user;
+                final earnedIds = user.earnedBadges.toSet();
+                
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: 0.8,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: BadgeData.badges.length,
+                  itemBuilder: (context, index) {
+                    final badge = BadgeData.badges[index];
+                    final isUnlocked = earnedIds.contains(badge.id);
+                    
+                    return Tooltip(
+                      message: badge.description,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: isUnlocked 
+                              ? Border.all(color: badge.color.withValues(alpha: 0.5), width: 2)
+                              : null,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Opacity(
+                              opacity: isUnlocked ? 1.0 : 0.3,
+                              child: Image.asset(
+                                badge.iconPath,
+                                width: 48,
+                                height: 48,
+                                errorBuilder: (_,__,___) => Icon(
+                                  Icons.emoji_events, 
+                                  size: 48, 
+                                  color: isUnlocked ? badge.color : Colors.grey
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              badge.title,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isUnlocked ? theme.colorScheme.onSurface : theme.disabledColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+            ),
+
+            const SizedBox(height: 24),
+
             Text(
               'Hedeflerin',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -228,9 +407,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-            const Spacer(),
-
-
+            
+            // REMOVE SPACER
           ],
         ),
       ),
@@ -239,7 +417,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _showEditProfileDialog(BuildContext context) async {
     final user = UserService().user;
-    final nameController = TextEditingController(text: user.name);
+    final nameController = TextEditingController(text: user.name == 'Misafir' ? '' : user.name);
     final weightController = TextEditingController(text: user.weight?.toString() ?? '');
     final heightController = TextEditingController(text: user.height?.toString() ?? '');
 

@@ -30,7 +30,7 @@ class FitnessApp extends StatelessWidget {
         final isDark = UserService().isDarkMode;
         
         return MaterialApp.router(
-          title: 'Mobil Fitness Asistanı',
+          title: 'Posturify',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),

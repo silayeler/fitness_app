@@ -22,13 +22,16 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       weight: fields[2] as double?,
       height: fields[3] as double?,
       goal: fields[4] as String?,
+      currentXp: fields[5] as int,
+      currentLevel: fields[6] as int,
+      earnedBadges: (fields[7] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, UserModel obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -38,7 +41,13 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       ..writeByte(3)
       ..write(obj.height)
       ..writeByte(4)
-      ..write(obj.goal);
+      ..write(obj.goal)
+      ..writeByte(5)
+      ..write(obj.currentXp)
+      ..writeByte(6)
+      ..write(obj.currentLevel)
+      ..writeByte(7)
+      ..write(obj.earnedBadges);
   }
 
   @override

@@ -115,15 +115,31 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   Future<void> _finishSession() async {
-    _stopwatch.stop();
-    _stopwatchTimer?.cancel();
-    
-    // Save to user stats
-    final durationMinutes = _stopwatch.elapsed.inMinutes > 0 ? _stopwatch.elapsed.inMinutes : 1;
-    await UserService().addSession(widget.exerciseName, durationMinutes);
-    
-    if (mounted) {
-      context.router.maybePop();
+    try {
+      _stopwatch.stop();
+      _stopwatchTimer?.cancel();
+      
+      // Save to user stats
+      final durationMinutes = _stopwatch.elapsed.inMinutes > 0 ? _stopwatch.elapsed.inMinutes : 1;
+      await UserService().addSession(widget.exerciseName, durationMinutes);
+      
+      // Award XP (Gamification)
+      // Dynamic: 10 XP per minute + 20 Base XP
+      int earnedXp = 20 + (durationMinutes * 10);
+      await UserService().addXp(earnedXp);
+    } catch (e) {
+      debugPrint('Error finishing session: $e');
+      // Even if saving fails, we should probably allow the user to exit
+      // but maybe show a snackbar.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Veriler kaydedilirken bir hata oluştu: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        context.router.maybePop();
+      }
     }
   }
 
