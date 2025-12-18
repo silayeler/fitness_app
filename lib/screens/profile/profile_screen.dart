@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
+import '../../widgets/bmi_gauge_card.dart';
 import '../../routes/app_router.dart';
 
 @RoutePage()
@@ -49,12 +50,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('Profil'),
         centerTitle: false,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: theme.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: theme.colorScheme.onSurface,
+          letterSpacing: -0.5,
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              context.router.push(SettingsRoute());
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.05),
+                   blurRadius: 10,
+                   offset: const Offset(0, 5),
+                 ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              color: theme.colorScheme.onSurface,
+              onPressed: () {
+                context.router.push(SettingsRoute());
+              },
+            ),
           ),
         ],
       ),
@@ -159,6 +183,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
             ),
             const SizedBox(height: 24),
+            
+            // BMI Gauge (Added)
+            BMIGaugeCard(
+              weight: UserService().user.weight, // Pass actual nullable value
+              height: UserService().user.height, // Pass actual nullable value
+              onAddInfo: () async {
+                 await _showEditProfileDialog(context);
+              },
+            ),
+
+            const SizedBox(height: 24),
 
             Text(
               'Hedeflerin',
@@ -203,24 +238,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showEditProfileDialog(BuildContext context) async {
-    final nameController = TextEditingController(text: _name);
-
+    final user = UserService().user;
+    final nameController = TextEditingController(text: user.name);
+    final weightController = TextEditingController(text: user.weight?.toString() ?? '');
+    final heightController = TextEditingController(text: user.height?.toString() ?? '');
 
     final result = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Profili Düzenle'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: 'Ad Soyad'),
-              ),
-              const SizedBox(height: 8),
-
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Ad Soyad',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: weightController,
+                        decoration: const InputDecoration(
+                          labelText: 'Kilo (kg)',
+                          suffixText: 'kg',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextField(
+                        controller: heightController,
+                        decoration: const InputDecoration(
+                          labelText: 'Boy (cm)',
+                          suffixText: 'cm',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -238,11 +304,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (result == true) {
       final newName = nameController.text.trim().isEmpty ? _name : nameController.text.trim();
-      await UserService().updateProfile(name: newName);
+      double? newWeight = double.tryParse(weightController.text.replaceAll(',', '.'));
+      double? newHeight = double.tryParse(heightController.text.replaceAll(',', '.'));
+
+      await UserService().updateProfile(
+        name: newName,
+        weight: newWeight,
+        height: newHeight,
+      );
       
       if (mounted) {
         setState(() {
           _name = newName;
+          // Force rebuild to update BMI Gauge
         });
       }
     }

@@ -22,6 +22,14 @@ class HistoryScreen extends StatelessWidget {
           appBar: AppBar(
             title: const Text('Geçmiş'),
             centerTitle: false,
+            backgroundColor: theme.scaffoldBackgroundColor,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            titleTextStyle: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.onSurface,
+              letterSpacing: -0.5,
+            ),
           ),
           backgroundColor: theme.scaffoldBackgroundColor,
           body: Padding(

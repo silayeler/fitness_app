@@ -129,28 +129,25 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
 
   @override
   Widget build(BuildContext context) {
-     // Full Screen Scaffold
     return Scaffold(
-      backgroundColor: Colors.white, // Or whatever background design needs
-      // If we want camera background during countdown? Design Screen 3 shows "Squat Hazırlan" on a textured background, NOT camera.
-      // But usually user wants to see themselves.
-      // The design image "Screen 3" is definitely stylized.
-      // Let's stick to the previous plan: Overlay on camera, but maybe with a white overlay if that matches design better?
-      // Actually, let's keep Camera visible but with a strong overlay, or if the design implies a transition screen, we can do that.
-      // "Screen 3" look: Grey background (texture?), "Squat Hazırlan...", Big "3" in box.
-      // Let's implement that exact look for Countdown.
+      backgroundColor: Colors.black, 
       body: Stack(
         children: [
-           // Background: Camera or Solid Color?
-           // If we pause camera or show camera?
-           // Mobile fitness apps usually show camera during countdown so you can position yourself.
-           // But the design shows a solid background. I will support Camera visibility for better UX, but use a high-opacity overlay to match design text contrast.
+           // 1. Camera Layer
            if (_isCameraInitialized)
              Positioned.fill(
                 child: CameraPreview(_controller!),
              ),
              
-          // Overlay
+           // 2. Skeleton Overlay (Removed per user request for future AI integration)
+           // if (!_isCountdown)
+           //   Positioned.fill(
+           //     child: CustomPaint(
+           //       painter: SkeletonOverlayPainter(),
+           //     ),
+           //   ),
+             
+          // 3. UI Overlay
           if (_isCountdown)
             _buildCountdownView()
           else
@@ -161,15 +158,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   Widget _buildCountdownView() {
-    // Match Screen 3 Design
     return Container(
-      color: const Color(0xFFF4F5F7).withValues(alpha: 0.95), // Nearly opaque to match design look
+      color: const Color(0xFFF4F5F7).withValues(alpha: 0.95),
       width: double.infinity,
-      child: SafeArea( // Use SafeArea
+      child: SafeArea(
         child: Column(
           children: [
-             // Header: Exercise Name
-             // In design: "Squat" (Huge, Light Grey), "Hazırlan..." (Smaller, Darker)
              Padding(
                padding: const EdgeInsets.only(top: 40, left: 24, right: 24),
                child: SizedBox(
@@ -180,10 +174,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                      Text(
                        widget.exerciseName,
                        style: const TextStyle(
-                         fontFamily: 'Inter', // If available
                          fontSize: 48,
                          fontWeight: FontWeight.w900,
-                         color: Colors.black12, // Very light grey
+                         color: Colors.black12,
                          height: 1.0,
                        ),
                      ),
@@ -202,7 +195,6 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
              
              const Spacer(),
              
-             // Countdown Box
              Container(
                width: 140,
                height: 140,
@@ -223,49 +215,25 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                  style: const TextStyle(
                    fontSize: 80,
                    fontWeight: FontWeight.bold,
-                   color: Color(0xFFE0E0E0), // Light grey number or similar
+                   color: Color(0xFFE0E0E0),
                  ),
                ),
              ),
              
              const Spacer(),
              
-             // "Kaydı Durdur" / Cancel Button
              Padding(
                padding: const EdgeInsets.all(24),
-               child: Column(
-                 children: [
-                    SizedBox(
-                     width: double.infinity,
-                     height: 56,
-                     child: ElevatedButton(
-                       style: ElevatedButton.styleFrom(
-                         backgroundColor: const Color(0xFFFF1744),
-                         foregroundColor: Colors.white,
-                         shape: RoundedRectangleBorder(
-                           borderRadius: BorderRadius.circular(28),
-                         ),
-                       ),
-                       onPressed: () => context.router.maybePop(),
-                       child: const Text(
-                         'Kaydı Durdur',
-                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                       ),
-                     ),
-                   ),
-                   const SizedBox(height: 12),
-                   TextButton(
-                     onPressed: () => context.router.maybePop(),
-                     child: const Text(
-                        'İptal Et',
-                        style: TextStyle(
-                          color: Colors.black38,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500
-                        ),
-                     ),
-                   )
-                 ],
+               child: TextButton(
+                 onPressed: () => context.router.maybePop(),
+                 child: const Text(
+                    'İptal Et',
+                    style: TextStyle(
+                      color: Colors.black38,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500
+                    ),
+                 ),
                ),
              ),
           ],
@@ -275,106 +243,365 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   Widget _buildRecordingView() {
-    // This is the actual session view (Screen 2 but with "Stop" button?)
-    // Or maybe Screen 2 IS the recording view?
-    // "Screen 2" has "Kaydı Başlat". So it's Setup.
-    // "Recording View" needs to provide feedback.
-    
-    return Stack(
-      children: [
-        // Top Bar
-        Positioned(
-          top: 0, 
-          left: 0, 
-          right: 0,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   // Back/Close
-                   IconButton(
-                     icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                     onPressed: () => context.router.maybePop(),
-                   ),
-                   // Status Pill
+    return SafeArea(
+      child: Column(
+        children: [
+          // Header: AI Coach & Score
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Logo / Title
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.auto_awesome, color: Color(0xFF00C853), size: 24),
+                        const SizedBox(width: 8),
+                        Text(
+                          'AI FORM',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 24,
+                            letterSpacing: 1.2,
+                            shadows: const [Shadow(blurRadius: 4, color: Colors.black)],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'AKILLI EGZERSIZ KOÇU',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 10,
+                        letterSpacing: 2.0,
+                         shadows: const [Shadow(blurRadius: 2, color: Colors.black)],
+                      ),
+                    ),
+                  ],
+                ),
+                
+                // Live Score Gauge
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFF00C853), width: 3),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '92',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                        ),
+                      ),
+                      Text(
+                        'SKOR',
+                        style: TextStyle(
+                          color: Color(0xFF00C853),
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Analysis Chips (Mock)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                _AnalysisChip(label: 'OMURGA DİK', isActive: true),
+                const SizedBox(width: 8),
+                _AnalysisChip(label: 'DİZ AÇISI İYİ', isActive: true),
+                const SizedBox(width: 8),
+                _AnalysisChip(label: 'DERİNLEŞ!', isActive: false),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+
+          // Center Guides (Visual decoration around user)
+          // (Handled by CustomPainter overlay)
+
+          const Spacer(),
+
+          // Bottom Dashboard
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.95),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.2),
+                   blurRadius: 20,
+                   offset: const Offset(0, 10),
+                 )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Reps and Timer Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'TEKRAR',
+                          style: TextStyle(
+                            color: Colors.black45,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        RichText(
+                          text: const TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '3',
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '/10',
+                                style: TextStyle(
+                                  color: Colors.black38,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.fiber_manual_record, color: Colors.red, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            _formattedTime,
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ],
+                      child: Text(
+                        _formattedTime,
+                        style: const TextStyle(
+                          fontFamily: 'Courier', // Monospace for numbers
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 48), // Balance
-                ],
-              ),
-            ),
-          ),
-        ),
-        
-        // Bottom Controls
-        Positioned(
-          bottom: 40,
-          left: 24,
-          right: 24,
-          child: Column(
-            children: [
-               // Feedback Text
-               Container(
-                 padding: const EdgeInsets.all(16),
-                 margin: const EdgeInsets.only(bottom: 24),
-                 decoration: BoxDecoration(
-                   color: Colors.white.withValues(alpha: 0.9),
-                   borderRadius: BorderRadius.circular(16),
-                 ),
-                 child: const Row(
-                   children: [
-                     Icon(Icons.check_circle, color: Color(0xFF00C853)),
-                     SizedBox(width: 12),
-                     Expanded(
-                       child: Text(
-                         'Formun harika! Böyle devam et.',
-                         style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black87),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                
+                // Feedback Text
+                const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Color(0xFF00C853)),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'FORM MÜKEMMEL',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF00C853),
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '585 KCAL',
+                      style: TextStyle(
+                         color: Colors.black38,
+                         fontSize: 12,
+                         fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Finish Button
+                SizedBox(
+                   width: double.infinity,
+                   height: 52,
+                   child: ElevatedButton(
+                     style: ElevatedButton.styleFrom(
+                       backgroundColor: const Color(0xFF00C853),
+                       foregroundColor: Colors.white,
+                       elevation: 0,
+                       shape: RoundedRectangleBorder(
+                         borderRadius: BorderRadius.circular(16),
                        ),
                      ),
-                   ],
-                 ),
-               ),
-            
-               SizedBox(
-                 width: double.infinity,
-                 height: 56,
-                 child: ElevatedButton(
-                   style: ElevatedButton.styleFrom(
-                     backgroundColor: Colors.white,
-                     foregroundColor: Colors.red,
-                     shape: RoundedRectangleBorder(
-                       borderRadius: BorderRadius.circular(28),
+                     onPressed: _finishSession,
+                     child: const Text(
+                       'ANTRENMANI BİTİR',
+                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                      ),
                    ),
-                   onPressed: _finishSession,
-                   child: const Text(
-                     'Bitir',
-                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                   ),
-                 ),
-               ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+class _AnalysisChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+
+  const _AnalysisChip({required this.label, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isActive ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive ? const Color(0xFF00C853) : Colors.white24,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+            color: isActive ? const Color(0xFF00C853) : Colors.white54,
+            size: 12,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive ? Colors.white : Colors.white54,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Mock Skeleton for visual effect
+class SkeletonOverlayPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. Setup Paint
+    final linePaint = Paint()
+      ..color = const Color(0xFF00C853).withValues(alpha: 0.6)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+      
+    final jointPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+      
+    // 2. Mock Points (Simulating a Squat/Standing pose in center)
+    // We'll define relative coordinates (0.0 - 1.0)
+    final centerX = size.width / 2;
+    final centerY = size.height / 2;
+    final scale = size.height * 0.4; // Skeleton size relative to screen
+    
+    // Head
+    final head = Offset(centerX, centerY - scale);
+    final neck = Offset(centerX, centerY - scale + 30);
+    
+    // Shoulders
+    final lShoulder = Offset(centerX - 40, centerY - scale + 40);
+    final rShoulder = Offset(centerX + 40, centerY - scale + 40);
+    
+    // Elbows
+    final lElbow = Offset(centerX - 60, centerY - scale + 100);
+    final rElbow = Offset(centerX + 60, centerY - scale + 100);
+    
+    // Wrists (Hands up position for guard)
+    final lWrist = Offset(centerX - 50, centerY - scale + 60);
+    final rWrist = Offset(centerX + 50, centerY - scale + 60);
+
+    // Spine
+    final hipCenter = Offset(centerX, centerY);
+    final lHip = Offset(centerX - 30, centerY);
+    final rHip = Offset(centerX + 30, centerY);
+    
+    // Knees (Squatting slightly)
+    final lKnee = Offset(centerX - 40, centerY + 100);
+    final rKnee = Offset(centerX + 40, centerY + 100);
+    
+    // Ankles
+    final lAnkle = Offset(centerX - 40, centerY + 200);
+    final rAnkle = Offset(centerX + 40, centerY + 200);
+
+    // 3. Draw Lines (Bones)
+    // Torso
+    canvas.drawLine(head, neck, linePaint);
+    canvas.drawLine(neck, hipCenter, linePaint);
+    canvas.drawLine(lShoulder, rShoulder, linePaint);
+    canvas.drawLine(lHip, rHip, linePaint);
+    canvas.drawLine(neck, lShoulder, linePaint);
+    canvas.drawLine(neck, rShoulder, linePaint);
+    canvas.drawLine(hipCenter, lHip, linePaint);
+    canvas.drawLine(hipCenter, rHip, linePaint);
+    
+    // Arms
+    canvas.drawLine(lShoulder, lElbow, linePaint);
+    canvas.drawLine(lElbow, lWrist, linePaint);
+    canvas.drawLine(rShoulder, rElbow, linePaint);
+    canvas.drawLine(rElbow, rWrist, linePaint);
+    
+    // Legs
+    canvas.drawLine(lHip, lKnee, linePaint);
+    canvas.drawLine(lKnee, lAnkle, linePaint);
+    canvas.drawLine(rHip, rKnee, linePaint);
+    canvas.drawLine(rKnee, rAnkle, linePaint);
+
+    // 4. Draw Joints (Dots)
+    final joints = [head, neck, lShoulder, rShoulder, lElbow, rElbow, lWrist, rWrist, lHip, rHip, lKnee, rKnee, lAnkle, rAnkle];
+    for (final point in joints) {
+      // Glow effect
+      canvas.drawCircle(point, 6, Paint()..color = const Color(0xFF00C853).withValues(alpha: 0.4));
+      // Core joint
+      canvas.drawCircle(point, 3, jointPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

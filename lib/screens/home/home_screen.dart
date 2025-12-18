@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
 import '../../services/notification_service.dart';
 import '../../routes/app_router.dart';
+import '../../widgets/quick_action_card.dart';
+import '../../widgets/weekly_activity_graph.dart';
 
 @RoutePage()
 class HomeScreen extends StatefulWidget {
@@ -80,18 +82,41 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
       appBar: AppBar(
         title: const Text('Ana Sayfa'),
         centerTitle: false,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: theme.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w900,
+          color: theme.colorScheme.onSurface,
+          letterSpacing: -0.5,
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              context.router.push(SettingsRoute());
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                 BoxShadow(
+                   color: Colors.black.withValues(alpha: 0.05),
+                   blurRadius: 10,
+                   offset: const Offset(0, 5),
+                 ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              color: theme.colorScheme.onSurface,
+              onPressed: () {
+                context.router.push(SettingsRoute());
+              },
+            ),
           ),
         ],
       ),
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,203 +140,259 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                   );
                 },
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
+              // Hızlı Başlat Kartları
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    QuickActionCard(
+                      title: 'Squat',
+                      duration: '20 Adet',
+                      imagePath: 'assets/images/gorsel_2.jpg',
+                      color: const Color(0xFF2196F3),
+                      onTap: () {
+                        context.router.push(
+                          ExerciseSessionRoute(exerciseName: 'Squat'),
+                        );
+                      },
+                    ),
+                    QuickActionCard(
+                      title: 'Mekik',
+                      duration: '30 Adet',
+                      imagePath: 'assets/images/gorsel_4.png',
+                      color: const Color(0xFFFF9800),
+                      onTap: () {
+                         context.router.push(
+                          ExerciseSessionRoute(exerciseName: 'Mekik'),
+                        );
+                      },
+                    ),
+                    QuickActionCard(
+                      title: 'Plank',
+                      duration: '1 dk',
+                      imagePath: 'assets/images/gorsel_3.png',
+                      color: const Color(0xFF9C27B0),
+                      onTap: () {
+                         context.router.push(
+                          ExerciseSessionRoute(exerciseName: 'Plank'),
+                        );
+                      },
+                    ),
+                    QuickActionCard(
+                      title: 'Ağırlık',
+                      duration: '15 dk',
+                      imagePath: 'assets/images/gorsel_1.png',
+                      color: const Color(0xFFF44336),
+                      onTap: () {
+                         context.router.push(
+                          ExerciseSessionRoute(exerciseName: 'Ağırlık'),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
               
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.shadowColor.withValues(alpha: 0.05),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Bugün hedefin:',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+              // Weekly Graph (Added)
+              const WeeklyActivityGraph(),
 
-                      // Hedef kartı
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.dark 
-                              ? const Color(0xFF1B5E20).withValues(alpha: 0.3) // Darker green for dark mode
-                              : const Color(0xFFF4FFF7),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: theme.brightness == Brightness.dark 
-                                    ? const Color(0xFF00C853).withValues(alpha: 0.2)
-                                    : const Color(0xFFE0F8EA),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.directions_run_rounded,
-                                color: Color(0xFF00C853),
-                              ),
+              const SizedBox(height: 24),
+              
+              Container(
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.shadowColor.withValues(alpha: 0.05),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bugün hedefin:',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Hedef kartı
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.brightness == Brightness.dark 
+                            ? const Color(0xFF1B5E20).withValues(alpha: 0.3) // Darker green for dark mode
+                            : const Color(0xFFF4FFF7),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: theme.brightness == Brightness.dark 
+                                  ? const Color(0xFF00C853).withValues(alpha: 0.2)
+                                  : const Color(0xFFE0F8EA),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Hedef',
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(color: Colors.grey[700]),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Günlük Hedef: 3 Seans',
-                                    style:
-                                        theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Bugün planlanan antrenmanını tamamla.',
-                                    style:
-                                        theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            child: const Icon(
+                              Icons.directions_run_rounded,
+                              color: Color(0xFF00C853),
                             ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Son başarılar
-                      Text(
-                        'Son başarıların',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.brightness == Brightness.dark
-                              ? const Color(0xFFE65100).withValues(alpha: 0.2)
-                              : const Color(0xFFFFF7EC),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                color: theme.brightness == Brightness.dark
-                                    ? const Color(0xFFFF9800).withValues(alpha: 0.2)
-                                    : const Color(0xFFFFE2C2),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Icon(
-                                Icons.emoji_events_outlined,
-                                color: Color(0xFFFF9800),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Başarı',
-                                    style: theme.textTheme.labelMedium
-                                        ?.copyWith(color: Colors.green[600]),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _lastExerciseTitle,
-                                    style:
-                                        theme.textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _lastExerciseSubtitle,
-                                    style:
-                                        theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Hedef tamamlama
-                      Text(
-                        'Hedef Tamamlama',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(999),
-                        child: LinearProgressIndicator(
-                          value: _dailyProgress,
-                          minHeight: 10,
-                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                          valueColor:
-                              const AlwaysStoppedAnimation(Color(0xFF00C853)),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          '$_dailyProgressText ($_dailyTargetText)',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey[700],
                           ),
-                        ),
-                      ),
-
-                      const Spacer(),
-                      Center(
-                        child: Text(
-                          '"Her gün biraz daha iyi ol!"',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                            fontStyle: FontStyle.italic,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hedef',
+                                  style: theme.textTheme.labelMedium
+                                      ?.copyWith(color: Colors.grey[700]),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Günlük Hedef: 3 Seans',
+                                  style:
+                                      theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Bugün planlanan antrenmanını tamamla.',
+                                  style:
+                                      theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Son başarılar
+                    Text(
+                      'Son başarıların',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.brightness == Brightness.dark
+                            ? const Color(0xFFE65100).withValues(alpha: 0.2)
+                            : const Color(0xFFFFF7EC),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              color: theme.brightness == Brightness.dark
+                                  ? const Color(0xFFFF9800).withValues(alpha: 0.2)
+                                  : const Color(0xFFFFE2C2),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Icon(
+                              Icons.emoji_events_outlined,
+                              color: Color(0xFFFF9800),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Başarı',
+                                  style: theme.textTheme.labelMedium
+                                      ?.copyWith(color: Colors.green[600]),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _lastExerciseTitle,
+                                  style:
+                                      theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _lastExerciseSubtitle,
+                                  style:
+                                      theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Hedef tamamlama
+                    Text(
+                      'Hedef Tamamlama',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: _dailyProgress,
+                        minHeight: 10,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        valueColor:
+                            const AlwaysStoppedAnimation(Color(0xFF00C853)),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '$_dailyProgressText ($_dailyTargetText)',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[700],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(height: 24), 
+                    Center(
+                      child: Text(
+                        '"Her gün biraz daha iyi ol!"',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
