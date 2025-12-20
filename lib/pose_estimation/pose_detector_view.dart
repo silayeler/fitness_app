@@ -50,7 +50,11 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
   
   // Timer State
   Timer? _timer;
-  int _elapsedSeconds = 0;
+  int _elapsedSeconds = 0; // Standard recording timer
+  
+  // Plank Timer (Tracks good form duration)
+  Timer? _plankTimer;
+  int _plankHoldDuration = 0;
 
   @override
   void initState() {
@@ -58,6 +62,31 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
     _initializeLogic();
     _initializeCamera();
   }
+  
+  // ... (Other standard methods)
+
+  void _managePlankTimer(bool isGoodPosture) {
+     if (isGoodPosture) {
+        if (_plankTimer == null || !_plankTimer!.isActive) {
+           _plankTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+              if (mounted) {
+                 setState(() {
+                    _plankHoldDuration++;
+                 });
+                 if (_plankHoldDuration >= 30) {
+                    // Logic for completion can be added here (e.g. stop timer, show success)
+                 }
+              }
+           });
+        }
+     } else {
+        // Pause timer if form breaks
+        _plankTimer?.cancel();
+        _plankTimer = null;
+     }
+  }
+
+
 
   void _initializeLogic() {
     switch (widget.exerciseName) {
@@ -291,6 +320,11 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
            if (result.score != null) {
               _score = result.score!.toInt();
            }
+
+           // If Plank, manage hold timer
+           if (widget.exerciseName == 'Plank') {
+              _managePlankTimer(result.isGoodPosture);
+           }
            
            // Pass result data to painter
            final painter = PosePainter(
@@ -317,6 +351,10 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
            }
         } else {
            _customPaint = null;
+           // Stop plank timer if body lost
+           if (widget.exerciseName == 'Plank') {
+              _managePlankTimer(false);
+           }
         }
       } else {
         _customPaint = null;
@@ -448,7 +486,10 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
                       children: [
                         Icon(Icons.check_circle, color: UIStyles.primaryBlue, size: 20),
                         SizedBox(width: 8),
-                        Text("$_reps Reps Completed", style: UIStyles.chipText),
+                        if (widget.exerciseName == 'Plank')
+                           Text("Hold: ${_plankHoldDuration}s / 30s", style: UIStyles.chipText)
+                        else
+                           Text("$_reps Reps Completed", style: UIStyles.chipText),
                         Container(height: 16, width: 1, color: Colors.white24, margin: EdgeInsets.symmetric(horizontal: 12)),
                         Text("Score: $_score%", style: UIStyles.scoreText),
                       ],
