@@ -50,6 +50,9 @@ dependencies:
   timezone: ^0.10.1
   flutter_timezone: ^5.0.1
   intl: ^0.20.2
+  video_player: ^2.10.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
 
 
 dev_dependencies:

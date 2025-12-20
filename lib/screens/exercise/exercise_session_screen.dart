@@ -47,6 +47,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   String _feedbackDetail = "Kameraya geçiniz.";
   bool _isGoodPosture = false;
   double _score = 0.0;
+  int _reps = 0;
 
   // Audio Feedback
   FlutterTts flutterTts = FlutterTts();
@@ -346,6 +347,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
              _feedbackDetail = result.feedback;
              _isGoodPosture = result.isGoodPosture;
              _score = result.score ?? 0.0;
+             _reps = _exerciseLogic.repCount;
            });
          }
 
@@ -656,17 +658,17 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                     // Rep Counter
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('TEKRAR', style: TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
-                        Text.rich(
-                           TextSpan(
-                            children: [
-                              const TextSpan(text: '-', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
-                              TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
-                            ],
-                          ),
-                        ),
-                      ],
+                         children: [
+                           const Text('TEKRAR', style: TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
+                           Text.rich(
+                              TextSpan(
+                               children: [
+                                 TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
+                                 const TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
+                               ],
+                             ),
+                           ),
+                         ],
                     ),
                     const SizedBox(width: 20),
                     // Divider

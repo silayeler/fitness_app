@@ -8,6 +8,18 @@ abstract class ExerciseLogic {
   List<PoseLandmarkType> get relevantLandmarks;
 
   // Helper: Calculate angle between three points (first - mid - last)
+  // Repetition State
+  int repCount = 0;
+  String repState = "neutral"; // neutral, down, up
+  bool hasTriggered = false; // To ensure we only count once per cycle
+
+  void reset() {
+    repCount = 0;
+    repState = "neutral";
+    hasTriggered = false;
+  }
+
+  // Helper: Calculate angle between three points (first - mid - last)
   double calculateAngle(PoseLandmark first, PoseLandmark mid, PoseLandmark last) {
     double radians = atan2(last.y - mid.y, last.x - mid.x) -
         atan2(first.y - mid.y, first.x - mid.x);

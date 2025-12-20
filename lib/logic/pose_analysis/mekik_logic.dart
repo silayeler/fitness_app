@@ -42,6 +42,24 @@ class MekikLogic extends ExerciseLogic {
     Map<PoseLandmarkType, String> overlays = {};
     overlays[hip.type] = "${crunchAngle.toInt()}°";
 
+    // Dynamic Score: Target 90 degrees (Top of crunch), Tolerance 30
+    double score = calculateScore(crunchAngle, 90, tolerance: 30, sensitivity: 1.0);
+
+    // Repetition Counting (State Machine)
+    // 1. Lying Down (Start/End) -> Angle > 130
+    if (crunchAngle > 130) {
+      if (repState == "up" && hasTriggered) {
+        repCount++;
+        hasTriggered = false;
+      }
+      repState = "down"; // Lying down is "down" state (neutral)
+    } 
+    // 2. Crunched (Action) -> Angle < 100
+    else if (crunchAngle < 100) {
+      repState = "up"; // Crunched up
+      hasTriggered = true;
+    }
+
     if (crunchAngle < 60) {
        // Too close
        jointColors[hip.type] = Colors.orange;
@@ -50,7 +68,8 @@ class MekikLogic extends ExerciseLogic {
          statusTitle: "YAVAŞLA",
          isGoodPosture: true,
          jointColors: jointColors, 
-         overlayText: overlays
+         overlayText: overlays,
+         score: score
        );
     } else if (crunchAngle < 120) {
        // Good crunch (shoulders off ground)
@@ -61,7 +80,7 @@ class MekikLogic extends ExerciseLogic {
          isGoodPosture: true,
          jointColors: jointColors,
          overlayText: overlays,
-         score: 95
+         score: score
        );
     } else {
        // Lying down
@@ -71,7 +90,8 @@ class MekikLogic extends ExerciseLogic {
          statusTitle: "HAZIR",
          isGoodPosture: true, // Resting
          jointColors: jointColors,
-         overlayText: overlays
+         overlayText: overlays,
+         score: 0.0 // Reset score when resting
        );
     }
   }

@@ -39,6 +39,18 @@ class SquatLogic extends ExerciseLogic {
        );
     }
 
+    // CONFIDENCE CHECK
+    const double minConfidence = 0.6;
+    if (hip.likelihood < minConfidence || 
+        knee.likelihood < minConfidence || 
+        ankle.likelihood < minConfidence) {
+       return AnalysisResult(
+         feedback: "Kamera seni göremiyor.",
+         statusTitle: "GÖRÜNÜM YOK",
+         isGoodPosture: false,
+       );
+    }
+
     // 1. Knee Angle (Hip - Knee - Ankle)
     double kneeAngle = calculateAngle(hip, knee, ankle);
     
@@ -64,6 +76,21 @@ class SquatLogic extends ExerciseLogic {
     // Sensitivity: 1.5 points lost per degree off.
     double score = calculateScore(kneeAngle, 90, tolerance: 15, sensitivity: 1.5);
 
+    // Repetition Counting Logic (State Machine)
+    // 1. Standing (Start/End)
+    if (kneeAngle > 160) {
+      if (repState == "down" && hasTriggered) {
+        repCount++;
+        hasTriggered = false; // Reset trigger
+      }
+      repState = "up";
+    } 
+    // 2. Squatting (Action)
+    else if (kneeAngle < 105) {
+      repState = "down";
+      hasTriggered = true; // Mark that user went deep enough
+    }
+
     if (kneeAngle < 65) {
        // Deep Squat (Advanced but good range)
        jointColors[knee.type] = Colors.blue; // Blue for advanced/deep
@@ -86,10 +113,11 @@ class SquatLogic extends ExerciseLogic {
          score: score, 
        );
     } else if (kneeAngle < 140) {
+       // Descending or Ascending
        return AnalysisResult(
-         feedback: "Daha aşağı in!", 
-         statusTitle: "HAZIR",
-         isGoodPosture: false,
+         feedback: repState == "down" ? "Kalk!" : "Daha aşağı in!", 
+         statusTitle: "DEVAM",
+         isGoodPosture: true, // It's part of the movement
          jointColors: jointColors,
          overlayText: overlays,
          score: score

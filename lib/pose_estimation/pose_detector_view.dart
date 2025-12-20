@@ -17,6 +17,7 @@ import 'package:fitness_app/logic/pose_analysis/plank_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/mekik_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/weight_logic.dart';
 // import 'posture_analyzer.dart'; // No longer needed
+import 'package:fitness_app/logic/pose_analysis/analysis_result.dart';
 import 'ui_styles.dart';
 import 'library_view.dart';
 
@@ -277,42 +278,46 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
         String feedback = "";
         
         if (poses.isNotEmpty) {
-           String rawAnalysis = _exerciseLogic.analyze(poses.first);
-           if (rawAnalysis == "Good Posture") {
-             status = "Good";
-           } else if (rawAnalysis != "Calculating..." && rawAnalysis != "Body not fully visible" && !rawAnalysis.startsWith("Status:")) {
-             status = "Bad";
-             feedback = rawAnalysis;
+           final AnalysisResult result = _exerciseLogic.analyze(poses.first);
+           
+           if (result.isGoodPosture) {
+             status = result.statusTitle; // e.g. "HARİKA" or "DEVAM"
            } else {
-             // Keep previous status or clear if needed
-             // status = ""; 
+             status = "Bad";
+             feedback = result.feedback;
            }
-        }
 
-        // Updating state for UI
-        if (mounted) {
-           setState(() {
-             _postureStatus = status;
-             _feedbackMessage = feedback;
-             // Simulate rep count increment on good posture (simple logic)
-             if (status == "Good" && _isRecording) {
-                // In a real app we would check state transitions (Bad -> Good)
-                // _reps++; 
-                if (_score < 100) _score++;
-             } else if (status == "Bad" && _isRecording) {
-                if (_score > 0) _score--;
-             }
-           });
-        }
+           // Update score from logic if available
+           if (result.score != null) {
+              _score = result.score!.toInt();
+           }
+           
+           // Pass result data to painter
+           final painter = PosePainter(
+              poses,
+              inputImage.metadata!.size,
+              inputImage.metadata!.rotation,
+              _cameras[_cameraIndex].lensDirection,
+              status != "Bad" ? UIStyles.primaryBlue : UIStyles.dangerRed,
+              _exerciseLogic.relevantLandmarks.toSet(),
+              result.jointColors,
+              result.overlayText,
+           );
+           _customPaint = painter;
 
-        final painter = PosePainter(
-          poses,
-          inputImage.metadata!.size,
-          inputImage.metadata!.rotation,
-          _cameras[_cameraIndex].lensDirection,
-          _postureStatus == "Good" ? UIStyles.primaryBlue : (_postureStatus == "Bad" ? UIStyles.dangerRed : null),
-        );
-        _customPaint = painter;
+           // Updating state for UI
+           if (mounted) {
+              setState(() {
+                _postureStatus = status == "Bad" ? "Bad" : "Good";
+                _feedbackMessage = feedback;
+                if (_exerciseLogic is SquatLogic) {
+                   _reps = (_exerciseLogic as SquatLogic).repCount;
+                }
+              });
+           }
+        } else {
+           _customPaint = null;
+        }
       } else {
         _customPaint = null;
       }
