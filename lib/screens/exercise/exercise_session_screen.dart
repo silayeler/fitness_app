@@ -1,4 +1,18 @@
 import 'dart:async';
+import 'dart:io'; 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
+import '../../pose_estimation/pose_painter.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import '../../logic/pose_analysis/exercise_logic.dart';
+import '../../logic/pose_analysis/analysis_result.dart';
+import '../../logic/pose_analysis/squat_logic.dart';
+import '../../logic/pose_analysis/plank_logic.dart';
+import '../../logic/pose_analysis/mekik_logic.dart';
+import '../../logic/pose_analysis/weight_logic.dart';
+import '../../logic/pose_analysis/pose_smoother.dart';
+
 import 'package:auto_route/auto_route.dart';
 import '../../services/user_service.dart';
 import 'package:camera/camera.dart';
@@ -19,8 +33,54 @@ class ExerciseSessionScreen extends StatefulWidget {
 
 class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     with WidgetsBindingObserver {
+  // ML Kit State
+  final PoseDetector _poseDetector = PoseDetector(options: PoseDetectorOptions(model: PoseDetectionModel.accurate));
+  final PoseSmoother _poseSmoother = PoseSmoother(alpha: 0.6); // 0.6 = Moderate smoothing
+  bool _canProcess = true;
+  bool _isBusy = false;
+  int _frameCounter = 0; // Throttling counter
+  CustomPainter? _customPaint;
+  late ExerciseLogic _exerciseLogic;
+  
+  // Feedback State
+  String _feedbackStatus = "Analiz Ediliyor...";
+  String _feedbackDetail = "Kameraya geçiniz.";
+  bool _isGoodPosture = false;
+  double _score = 0.0;
+
+  // Audio Feedback
+  FlutterTts flutterTts = FlutterTts();
+  DateTime? _lastSpeechTime; // Throttle speech
+
   CameraController? _controller;
   bool _isCameraInitialized = false;
+  CameraLensDirection _cameraLensDirection = CameraLensDirection.front;
+
+  void _switchCamera() async {
+    // 1. Unmount preview immediately to prevent "Disposed CameraController" error
+    if (mounted) {
+      setState(() {
+        _isCameraInitialized = false;
+      });
+    }
+
+    // 2. Dispose existing controller
+    if (_controller != null) {
+      await _controller!.dispose();
+    }
+
+    // 3. Update direction and re-initialize
+    if (mounted) {
+      setState(() {
+        _cameraLensDirection =
+            _cameraLensDirection == CameraLensDirection.front
+                ? CameraLensDirection.back
+                : CameraLensDirection.front;
+      });
+    }
+    
+    _initCamera();
+  }
 
   bool _isCountdown = true; 
   int _countdownValue = 3;
@@ -33,12 +93,40 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initializeLogic();
     _initCamera();
+    _initTts();
+  }
+
+  void _initTts() async {
+    await flutterTts.setLanguage("tr-TR");
+    await flutterTts.setSpeechRate(0.5);
+  }
+
+  void _initializeLogic() {
+    switch (widget.exerciseName) {
+      case 'Squat':
+        _exerciseLogic = SquatLogic();
+        break;
+      case 'Plank':
+        _exerciseLogic = PlankLogic();
+        break;
+      case 'Mekik':
+        _exerciseLogic = MekikLogic();
+        break;
+      case 'Ağırlık':
+        _exerciseLogic = WeightLogic();
+        break;
+      default:
+        _exerciseLogic = SquatLogic();
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _canProcess = false;
+    _poseDetector.close();
     _controller?.dispose();
     _timer?.cancel();
     super.dispose();
@@ -46,35 +134,49 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final cameraController = _controller;
-    if (cameraController == null || !cameraController.value.isInitialized) {
-      return;
-    }
     if (state == AppLifecycleState.inactive) {
-      cameraController.dispose();
+      // Free up resources when not in foreground (e.g. screenshot, app switch)
+      _isCameraInitialized = false;
+      _controller?.dispose();
+      _controller = null;
+      if (mounted) setState(() {});
     } else if (state == AppLifecycleState.resumed) {
+      // Re-initialize camera when coming back
+      _isCameraInitialized = false; 
       _initCamera();
     }
   }
 
   Future<void> _initCamera() async {
-    // Permission already granted in previous screen ideally, but check again safely
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) return;
-      final camera = cameras.first;
+      
+      CameraDescription camera = cameras.firstWhere(
+        (camera) => camera.lensDirection == _cameraLensDirection,
+        orElse: () => cameras.first,
+      );
+
       _controller = CameraController(
         camera,
         ResolutionPreset.high,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
+        imageFormatGroup: Platform.isAndroid
+            ? ImageFormatGroup.nv21 // Android specifics
+            : ImageFormatGroup.bgra8888, // iOS specific
       );
+      
       await _controller!.initialize();
+      
       if (!mounted) return;
+
+      // Start Image Stream
+      _controller?.startImageStream(_processCameraImage);
+
       setState(() {
         _isCameraInitialized = true;
       });
-      // Start countdown immediately after camera checks
+      
       _startCountdown();
     } catch (e) {
       debugPrint('Camera error: $e');
@@ -143,6 +245,135 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     }
   }
 
+  final _orientations = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
+
+  Future<void> _processCameraImage(CameraImage image) async {
+    // Throttle: Process only every 2nd frame (15fps) for balance between lag and smoothness
+    _frameCounter++;
+    if (_frameCounter % 2 != 0) return;
+
+    final inputImage = _inputImageFromCameraImage(image);
+    if (inputImage == null) return;
+    _processImage(inputImage);
+  }
+
+  InputImage? _inputImageFromCameraImage(CameraImage image) {
+    if (_controller == null) return null;
+    final camera = _controller!.description;
+    final sensorOrientation = camera.sensorOrientation;
+    InputImageRotation? rotation;
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+    } else if (defaultTargetPlatform == TargetPlatform.android) {
+      var rotationCompensation = _orientations[_controller!.value.deviceOrientation];
+      if (rotationCompensation == null) return null;
+      if (camera.lensDirection == CameraLensDirection.front) {
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+      } else {
+        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
+      }
+      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
+    }
+    if (rotation == null) return null;
+    final format = InputImageFormatValue.fromRawValue(image.format.raw);
+    
+    // Only supporting NV21 (Android) and BGRA8888 (iOS) for now as per ML Kit requirement
+    if (format == null || (defaultTargetPlatform == TargetPlatform.android && format != InputImageFormat.nv21) || (defaultTargetPlatform == TargetPlatform.iOS && format != InputImageFormat.bgra8888)) {
+       // return null; 
+    }
+
+    final WriteBuffer allBytes = WriteBuffer();
+    for (final Plane plane in image.planes) {
+      allBytes.putUint8List(plane.bytes);
+    }
+    final bytes = allBytes.done().buffer.asUint8List();
+    final Size imageSize = Size(image.width.toDouble(), image.height.toDouble());
+    final inputImageMetadata = InputImageMetadata(
+      size: imageSize,
+      rotation: rotation,
+      format: format ?? InputImageFormat.nv21,
+      bytesPerRow: image.planes[0].bytesPerRow,
+    );
+    return InputImage.fromBytes(bytes: bytes, metadata: inputImageMetadata);
+  }
+
+  Future<void> _processImage(InputImage inputImage) async {
+    if (!_canProcess) return;
+    if (_isBusy) return;
+    _isBusy = true;
+    
+    try {
+      final poses = await _poseDetector.processImage(inputImage);
+      
+      if (inputImage.metadata?.size != null && inputImage.metadata?.rotation != null) {
+         
+         AnalysisResult? result;
+         Pose? smoothedPose;
+
+         if (poses.isNotEmpty) {
+           final rawPose = poses.first;
+           smoothedPose = _poseSmoother.smooth(rawPose);
+           
+           result = _exerciseLogic.analyze(smoothedPose!);
+           
+           // Audio Feedback (Throttle)
+           if (!result.isGoodPosture && !_isCountdown) {
+               final now = DateTime.now();
+               // Throttle: 3 seconds
+               if (_lastSpeechTime == null || now.difference(_lastSpeechTime!) > const Duration(seconds: 3)) {
+                   _lastSpeechTime = now;
+                   if (result.feedback.isNotEmpty) {
+                      flutterTts.speak(result.feedback);
+                   }
+               }
+           }
+         } else {
+            result = AnalysisResult(
+              feedback: "Kamera seni göremiyor.",
+              statusTitle: "GÖRÜNÜM YOK",
+              isGoodPosture: false,
+            );
+         }
+
+         if (mounted && result != null) {
+           setState(() {
+             _feedbackStatus = result!.statusTitle;
+             _feedbackDetail = result.feedback;
+             _isGoodPosture = result.isGoodPosture;
+             _score = result.score ?? 0.0;
+           });
+         }
+
+         if (result != null && smoothedPose != null) {
+             final painter = PosePainter(
+                [smoothedPose], 
+                inputImage.metadata!.size,
+                inputImage.metadata!.rotation,
+                _controller!.description.lensDirection,
+                result.isGoodPosture ? const Color(0xFF00C853) : (result.statusTitle == "DİKKAT" || result.statusTitle == "DÜZELT" || result.statusTitle == "DİK DUR" ? Colors.red : Colors.white),
+                _exerciseLogic.relevantLandmarks.toSet(),
+                result.jointColors,
+                result.overlayText,
+             );
+             _customPaint = painter;
+         }
+      } else {
+        _customPaint = null;
+      }
+
+    } catch (e) {
+      debugPrint("Error processing image: $e");
+    }
+
+    _isBusy = false;
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,18 +381,18 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       body: Stack(
         children: [
            // 1. Camera Layer
-           if (_isCameraInitialized)
+           if (_isCameraInitialized && _controller != null && _controller!.value.isInitialized)
              Positioned.fill(
                 child: CameraPreview(_controller!),
              ),
              
-           // 2. Skeleton Overlay (Removed per user request for future AI integration)
-           // if (!_isCountdown)
-           //   Positioned.fill(
-           //     child: CustomPaint(
-           //       painter: SkeletonOverlayPainter(),
-           //     ),
-           //   ),
+           // 2. Pose Painter Overlay (Skeleton)
+           if (!_isCountdown && _customPaint != null)
+             Positioned.fill(
+               child: CustomPaint(
+                 painter: _customPaint!,
+               ),
+             ),
              
           // 3. UI Overlay
           if (_isCountdown)
@@ -262,228 +493,235 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     return SafeArea(
       child: Column(
         children: [
-          // Header: AI Coach & Score
+          // Top Bar: Navigation, Title, Score
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Logo / Title
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.auto_awesome, color: Color(0xFF00C853), size: 24),
-                        const SizedBox(width: 8),
-                        Text(
-                          'AI FORM',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontWeight: FontWeight.w900,
-                            fontSize: 24,
-                            letterSpacing: 1.2,
-                            shadows: const [Shadow(blurRadius: 4, color: Colors.black)],
-                          ),
-                        ),
-                      ],
+                // 1. Back Button (Glassy)
+                InkWell(
+                  onTap: () => context.router.maybePop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
                     ),
-                    Text(
-                      'AKILLI EGZERSIZ KOÇU',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 10,
-                        letterSpacing: 2.0,
-                         shadows: const [Shadow(blurRadius: 2, color: Colors.black)],
-                      ),
-                    ),
-                  ],
+                    child: const Icon(Icons.close, color: Colors.white, size: 20),
+                  ),
                 ),
                 
-                // Live Score Gauge
+                const Spacer(),
+                
+                // 2. Exercise Title (with Glow)
+                Text(
+                  widget.exerciseName.toUpperCase(),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                    shadows: [
+                      Shadow(color: const Color(0xFF00C853).withValues(alpha: 0.6), blurRadius: 15)
+                    ]
+                  ),
+                ),
+                
+                const Spacer(),
+                
+                // 3. Score Badge (Premium Look)
                 Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF00C853), width: 3),
-                  ),
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '92',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 22,
-                        ),
-                      ),
-                      Text(
-                        'SKOR',
-                        style: TextStyle(
-                          color: Color(0xFF00C853),
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                   decoration: BoxDecoration(
+                     gradient: LinearGradient(
+                       colors: [const Color(0xFF00C853).withValues(alpha: 0.8), const Color(0xFF00E676).withValues(alpha: 0.8)],
+                       begin: Alignment.topLeft,
+                       end: Alignment.bottomRight
+                     ),
+                     borderRadius: BorderRadius.circular(30),
+                     boxShadow: [
+                       BoxShadow(
+                         color: const Color(0xFF00C853).withValues(alpha: 0.4),
+                         blurRadius: 12,
+                         offset: const Offset(0, 4)
+                       )
+                     ]
+                   ),
+                   child: Row(
+                     children: [
+                       const Icon(Icons.bolt, color: Colors.white, size: 16),
+                       const SizedBox(width: 4),
+                       Text(
+                         '${_score.toInt()}',
+                         style: const TextStyle(
+                           color: Colors.white,
+                           fontWeight: FontWeight.bold,
+                           fontSize: 16,
+                         ),
+                       ),
+                     ],
+                   ),
                 ),
               ],
             ),
           ),
           
-          // Analysis Chips (Mock)
+          const SizedBox(height: 20),
+          
+          // Secondary Bar: Status Chips + Camera Toggle (Centered Row)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _AnalysisChip(label: 'OMURGA DİK', isActive: true),
-                const SizedBox(width: 8),
-                _AnalysisChip(label: 'DİZ AÇISI İYİ', isActive: true),
-                const SizedBox(width: 8),
-                _AnalysisChip(label: 'DERİNLEŞ!', isActive: false),
+                // Status Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white12)
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                       Icon(
+                         _isGoodPosture ? Icons.check_circle : Icons.warning_rounded,
+                         color: _isGoodPosture ? const Color(0xFF00C853) : Colors.orange,
+                         size: 16
+                       ),
+                       const SizedBox(width: 8),
+                       Text(
+                         _isGoodPosture ? 'HARİKA FORM' : 'DÜZELT',
+                         style: TextStyle(
+                           color: _isGoodPosture ? Colors.white : Colors.orangeAccent,
+                           fontWeight: FontWeight.bold,
+                           fontSize: 12
+                         ),
+                       ),
+                       const SizedBox(width: 12),
+                       Container(width: 1, height: 12, color: Colors.white24),
+                       const SizedBox(width: 12),
+                       const Text(
+                         'AI GÖZÜ',
+                         style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.w600),
+                       )
+                    ],
+                  ),
+                ),
+                
+                const Spacer(),
+                
+                // Camera Toggle (Floating on right)
+                InkWell(
+                  onTap: _switchCamera,
+                  child: Container(
+                     padding: const EdgeInsets.all(10),
+                     decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white10),
+                     ),
+                    child: const Icon(Icons.flip_camera_ios, color: Colors.white, size: 20),
+                  ),
+                ),
               ],
             ),
           ),
 
           const Spacer(),
-
-          // Center Guides (Visual decoration around user)
-          // (Handled by CustomPainter overlay)
-
-          const Spacer(),
-
-          // Bottom Dashboard
+          
+          // Bottom Dashboard (Compact)
           Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.95),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
+             margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
+             decoration: BoxDecoration(
+               color: Colors.white,
+               borderRadius: BorderRadius.circular(24),
+
+               boxShadow: [
                  BoxShadow(
-                   color: Colors.black.withValues(alpha: 0.2),
+                   color: Colors.black.withValues(alpha: 0.1),
                    blurRadius: 20,
                    offset: const Offset(0, 10),
                  )
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Reps and Timer Row
+               ]
+             ),
+             padding: const EdgeInsets.all(20),
+             child: Column(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                // Reps and Feedback Row (Merged for compactness)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Rep Counter
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'TEKRAR',
-                          style: TextStyle(
-                            color: Colors.black45,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        RichText(
-                          text: const TextSpan(
+                        const Text('TEKRAR', style: TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text.rich(
+                           TextSpan(
                             children: [
-                              TextSpan(
-                                text: '3',
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '/10',
-                                style: TextStyle(
-                                  color: Colors.black38,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              const TextSpan(text: '-', style: TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
+                              TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5F5),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
+                    const SizedBox(width: 20),
+                    // Divider
+                    Container(height: 30, width: 1, color: Colors.grey[300]),
+                    const SizedBox(width: 20),
+                    // Feedback
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           Text(
+                            _feedbackStatus,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: _isGoodPosture ? const Color(0xFF00C853) : Colors.red,
+                              fontSize: 14
+                            ),
+                          ),
+                          Text(
+                            _feedbackDetail,
+                            style: const TextStyle(color: Colors.black54, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      )
+                    ),
+                    // Timer
+                     Text(
                         _formattedTime,
                         style: const TextStyle(
-                          fontFamily: 'Courier', // Monospace for numbers
-                          fontSize: 24,
+                          fontFamily: 'Courier',
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
                       ),
-                    ),
                   ],
                 ),
                 
-                const SizedBox(height: 16),
-                const Divider(),
                 const SizedBox(height: 12),
                 
-                // Feedback Text
-                const Row(
-                  children: [
-                    Icon(Icons.check_circle, color: Color(0xFF00C853)),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'FORM MÜKEMMEL',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF00C853),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      '585 KCAL',
-                      style: TextStyle(
-                         color: Colors.black38,
-                         fontSize: 12,
-                         fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // Finish Button
+                // Finish Button (Smaller)
                 SizedBox(
                    width: double.infinity,
-                   height: 52,
+                   height: 44,
                    child: ElevatedButton(
                      style: ElevatedButton.styleFrom(
                        backgroundColor: const Color(0xFF00C853),
                        foregroundColor: Colors.white,
                        elevation: 0,
-                       shape: RoundedRectangleBorder(
-                         borderRadius: BorderRadius.circular(16),
-                       ),
+                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                      ),
                      onPressed: _finishSession,
-                     child: const Text(
-                       'ANTRENMANI BİTİR',
-                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                     ),
+                     child: const Text('BİTİR', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                    ),
                 ),
               ],
@@ -498,8 +736,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
 class _AnalysisChip extends StatelessWidget {
   final String label;
   final bool isActive;
+  final Color? color;
 
-  const _AnalysisChip({required this.label, required this.isActive});
+  const _AnalysisChip({required this.label, required this.isActive, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +756,7 @@ class _AnalysisChip extends StatelessWidget {
         children: [
           Icon(
             isActive ? Icons.check_circle_outline : Icons.radio_button_unchecked,
-            color: isActive ? const Color(0xFF00C853) : Colors.white54,
+            color: color ?? (isActive ? const Color(0xFF00C853) : Colors.white54),
             size: 12,
           ),
           const SizedBox(width: 4),
