@@ -39,6 +39,30 @@ class PlankLogic extends ExerciseLogic {
        );
     }
 
+    // Check Likelihood (Confidence)
+    // If not confident, do not proceed
+    if (hip.likelihood < 0.5 || shoulder.likelihood < 0.5 || ankle.likelihood < 0.5) {
+       return AnalysisResult(
+         feedback: "Net görünmüyorsun",
+         statusTitle: "GÖRÜNÜM ZAYIF",
+         isGoodPosture: false,
+       );
+    }
+
+    // Horizontal Check
+    // Plank is horizontal: abs(Delta X) should be >> abs(Delta Y)
+    // If Delta Y > Delta X, person is likely vertical (Standing)
+    final dx = (shoulder.x - ankle.x).abs();
+    final dy = (shoulder.y - ankle.y).abs();
+    
+    if (dy > dx) {
+       return AnalysisResult(
+         feedback: "Yere yat ve plank pozisyonu al!",
+         statusTitle: "POZİSYON AL",
+         isGoodPosture: false,
+       );
+    }
+
     // Body Line Angle (Shoulder - Hip - Ankle)
     // Goal: 180 degrees (straight line)
     // Acceptable Range: 165 - 180
@@ -52,6 +76,7 @@ class PlankLogic extends ExerciseLogic {
     double score = calculateScore(bodyAngle, 180, tolerance: 15, sensitivity: 2.0);
 
     // Check if body is straight enough
+    // Stricter tolerance: must be >= 170 degrees (10 degree deviation max)
     if (bodyAngle >= 165) {
        jointColors[hip.type] = const Color(0xFF00C853);
        return AnalysisResult(

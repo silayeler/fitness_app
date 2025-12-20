@@ -122,12 +122,12 @@ class UserService {
      return _sessionBox.values.toList().reversed.toList();
   }
 
-  Future<void> addSession(String exerciseName, int durationMinutes) async {
+  Future<void> addSession(String exerciseName, int durationMinutes, int accuracyScore) async {
     final session = ExerciseSessionModel(
       exerciseName: exerciseName,
       durationMinutes: durationMinutes,
       date: DateTime.now(),
-      accuracyScore: 85, // Mock score for now until AI is ready
+      accuracyScore: accuracyScore, 
     );
     await _sessionBox.add(session);
   }

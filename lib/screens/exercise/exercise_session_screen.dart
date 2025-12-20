@@ -89,6 +89,10 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   final Stopwatch _stopwatch = Stopwatch();
   Timer? _stopwatchTimer;
   String _formattedTime = "00:00";
+  
+  // Plank Specific State
+  int _plankRemainingSeconds = 30;
+  bool _isCompleted = false;
 
   @override
   void initState() {
@@ -130,6 +134,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     _poseDetector.close();
     _controller?.dispose();
     _timer?.cancel();
+    _stopwatchTimer?.cancel();
     super.dispose();
   }
 
@@ -205,15 +210,48 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     setState(() {
       _isCountdown = false; 
     });
-    _stopwatch.start();
+    
+    if (widget.exerciseName != 'Plank') {
+      _stopwatch.start();
+    }
+    
     _stopwatchTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      final elapsed = _stopwatch.elapsed;
-      setState(() {
-        final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
-        final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
-        _formattedTime = "$minutes:$seconds";
-      });
+      
+      if (widget.exerciseName == 'Plank') {
+        // Plank Logic: Count down ONLY if posture is good
+        if (_isGoodPosture) {
+           setState(() {
+             if (_plankRemainingSeconds > 0) {
+               _plankRemainingSeconds--;
+               
+               // Audio Alert for last 3 seconds (Trigger AFTER decrement to match UI)
+               if (_plankRemainingSeconds > 0 && _plankRemainingSeconds <= 3) {
+                  flutterTts.speak("$_plankRemainingSeconds");
+               }
+               
+               // Format for Plank (Countdown)
+               final minutes = (_plankRemainingSeconds ~/ 60).toString().padLeft(2, '0');
+               final seconds = (_plankRemainingSeconds % 60).toString().padLeft(2, '0');
+               _formattedTime = "$minutes:$seconds";
+             } else {
+               // FINISH: Show completion screen
+               _stopwatchTimer?.cancel();
+               setState(() {
+                 _isCompleted = true;
+               });
+             }
+           });
+        }
+      } else {
+        // Standard Logic: Count up (Stopwatch)
+        final elapsed = _stopwatch.elapsed;
+        setState(() {
+          final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
+          final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+          _formattedTime = "$minutes:$seconds";
+        });
+      }
     });
   }
 
@@ -222,9 +260,15 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       _stopwatch.stop();
       _stopwatchTimer?.cancel();
       
-      // Save to user stats
-      final durationMinutes = _stopwatch.elapsed.inMinutes > 0 ? _stopwatch.elapsed.inMinutes : 1;
-      await UserService().addSession(widget.exerciseName, durationMinutes);
+      // Calculate duration
+      int durationMinutes;
+      if (widget.exerciseName == 'Plank') {
+        durationMinutes = 1; // Plank is fixed 30s target, we can log as 1 min or 0.5
+      } else {
+        durationMinutes = _stopwatch.elapsed.inMinutes > 0 ? _stopwatch.elapsed.inMinutes : 1;
+      }
+
+      await UserService().addSession(widget.exerciseName, durationMinutes, _score.toInt());
       
       // Award XP (Gamification)
       // Dynamic: 10 XP per minute + 20 Base XP
@@ -232,8 +276,6 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       await UserService().addXp(earnedXp);
     } catch (e) {
       debugPrint('Error finishing session: $e');
-      // Even if saving fails, we should probably allow the user to exit
-      // but maybe show a snackbar.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Veriler kaydedilirken bir hata oluştu: $e')),
@@ -323,7 +365,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
            result = _exerciseLogic.analyze(smoothedPose!);
            
            // Audio Feedback (Throttle)
-           if (!result.isGoodPosture && !_isCountdown) {
+           // Only speak if NOT completed and NOT countdown
+           if (!result.isGoodPosture && !_isCountdown && !_isCompleted) {
                final now = DateTime.now();
                // Throttle: 3 seconds
                if (_lastSpeechTime == null || now.difference(_lastSpeechTime!) > const Duration(seconds: 3)) {
@@ -341,7 +384,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
             );
          }
 
-         if (mounted && result != null) {
+         if (mounted && result != null && !_isCompleted) {
            setState(() {
              _feedbackStatus = result!.statusTitle;
              _feedbackDetail = result.feedback;
@@ -357,7 +400,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                 inputImage.metadata!.size,
                 inputImage.metadata!.rotation,
                 _controller!.description.lensDirection,
-                result.isGoodPosture ? const Color(0xFF00C853) : (result.statusTitle == "DİKKAT" || result.statusTitle == "DÜZELT" || result.statusTitle == "DİK DUR" ? Colors.red : Colors.white),
+                result.isGoodPosture ? const Color(0xFF00C853) : (result.statusTitle == "DİKKAT" || result.statusTitle == "DÜZELT" || result.statusTitle == "DİK DUR" || result.statusTitle == "POZİSYON AL" ? Colors.red : Colors.white),
                 _exerciseLogic.relevantLandmarks.toSet(),
                 result.jointColors,
                 result.overlayText,
@@ -389,7 +432,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
              ),
              
            // 2. Pose Painter Overlay (Skeleton)
-           if (!_isCountdown && _customPaint != null)
+           if (!_isCountdown && _customPaint != null && !_isCompleted)
              Positioned.fill(
                child: CustomPaint(
                  painter: _customPaint!,
@@ -399,6 +442,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
           // 3. UI Overlay
           if (_isCountdown)
             _buildCountdownView()
+          else if (_isCompleted)
+            _buildCompletionView()
           else
             _buildRecordingView(),
         ],
@@ -486,6 +531,109 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                ),
              ),
           ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildCompletionView() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.8),
+      width: double.infinity,
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00C853).withValues(alpha: 0.3),
+                blurRadius: 40,
+                spreadRadius: 10,
+              )
+            ]
+          ),
+          child: Column(
+             mainAxisSize: MainAxisSize.min,
+             children: [
+               const Icon(Icons.emoji_events_rounded, color: Color(0xFF00C853), size: 64),
+               const SizedBox(height: 24),
+               const Text(
+                 "HEDEF TAMAMLANDI!",
+                 textAlign: TextAlign.center,
+                 style: TextStyle(
+                   fontSize: 24,
+                   fontWeight: FontWeight.w900,
+                   color: Colors.black87,
+                 ),
+               ),
+               const SizedBox(height: 8),
+               const Text(
+                 "Harika iş çıkardın. Formun kusursuzdu!",
+                 textAlign: TextAlign.center,
+                 style: TextStyle(
+                   fontSize: 14,
+                   color: Colors.black45,
+                   fontWeight: FontWeight.w500,
+                 ),
+               ),
+               const SizedBox(height: 32),
+               
+               // Stats
+               Container(
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                   color: const Color(0xFFF5F7FA),
+                   borderRadius: BorderRadius.circular(20),
+                 ),
+                 child: Row(
+                   mainAxisAlignment: MainAxisAlignment.spaceAround,
+                   children: [
+                      Column(
+                        children: const [
+                          Text("SÜRE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38)),
+                          SizedBox(height: 4),
+                          Text("30sn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        ],
+                      ),
+                      Container(width: 1, height: 30, color: Colors.black12),
+                      Column(
+                        children: [
+                          const Text("PUAN", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38)),
+                          const SizedBox(height: 4),
+                          Text("${_score.toInt()}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF00C853))),
+                        ],
+                      ),
+                   ],
+                 ),
+               ),
+               
+               const SizedBox(height: 32),
+               
+               SizedBox(
+                 width: double.infinity,
+                 height: 56,
+                 child: ElevatedButton(
+                   onPressed: _finishSession,
+                   style: ElevatedButton.styleFrom(
+                     backgroundColor: const Color(0xFF00C853),
+                     foregroundColor: Colors.white,
+                     elevation: 0,
+                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                   ),
+                   child: const Text(
+                     "KAYDET VE ÇIK",
+                     style: TextStyle(
+                       fontSize: 16,
+                       fontWeight: FontWeight.bold,
+                     ),
+                   ),
+                 ),
+               ),
+             ],
+          ),
         ),
       ),
     );
@@ -655,25 +803,28 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                 // Reps and Feedback Row (Merged for compactness)
                 Row(
                   children: [
-                    // Rep Counter
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           const Text('TEKRAR', style: TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
-                           Text.rich(
-                              TextSpan(
-                               children: [
-                                 TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
-                                 const TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
-                               ],
+                    // Rep Counter (Hidden for Plank)
+                    if (widget.exerciseName != 'Plank') ...[
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             const Text('TEKRAR', style: TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
+                             Text.rich(
+                                TextSpan(
+                                 children: [
+                                   TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
+                                   const TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
+                                 ],
+                               ),
                              ),
-                           ),
-                         ],
-                    ),
-                    const SizedBox(width: 20),
-                    // Divider
-                    Container(height: 30, width: 1, color: Colors.grey[300]),
-                    const SizedBox(width: 20),
+                           ],
+                      ),
+                      const SizedBox(width: 20),
+                      // Divider
+                      Container(height: 30, width: 1, color: Colors.grey[300]),
+                      const SizedBox(width: 20),
+                    ],
+                    
                     // Feedback
                     Expanded(
                       child: Column(
@@ -697,15 +848,24 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                       )
                     ),
                     // Timer
-                     Text(
-                        _formattedTime,
-                        style: const TextStyle(
-                          fontFamily: 'Courier',
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
+                    Column(
+                       children: [
+                         Text(
+                            _formattedTime,
+                            style: const TextStyle(
+                              fontFamily: 'Courier',
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          if (widget.exerciseName == 'Plank' && !_isGoodPosture)
+                             const Text(
+                               "DURAKLATILDI",
+                               style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                             ),
+                       ],
+                    ),
                   ],
                 ),
                 
