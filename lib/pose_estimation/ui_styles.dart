@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 
 class UIStyles {
@@ -10,45 +11,46 @@ class UIStyles {
   static const Color glassWhite = Color(0x33FFFFFF); // Transparent White
   
   // Text Styles
-  static const TextStyle heading = TextStyle(
+  // Text Styles
+  static TextStyle heading = GoogleFonts.poppins(
     fontSize: 18,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
     letterSpacing: 0.5,
   );
 
-  static const TextStyle timer = TextStyle(
+  static TextStyle timer = GoogleFonts.poppins(
     fontSize: 12,
     fontWeight: FontWeight.w600,
     color: Colors.white70,
     letterSpacing: 1.0,
   );
 
-  static const TextStyle chipText = TextStyle(
+  static TextStyle chipText = GoogleFonts.poppins(
     fontSize: 14,
     fontWeight: FontWeight.w600,
     color: Colors.white,
   );
 
-  static const TextStyle scoreText = TextStyle(
+  static TextStyle scoreText = GoogleFonts.poppins(
     fontSize: 14,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
     color: successGreen,
   );
 
-  static const TextStyle cardTitle = TextStyle(
+  static TextStyle cardTitle = GoogleFonts.poppins(
     fontSize: 16,
-    fontWeight: FontWeight.bold,
+    fontWeight: FontWeight.w700,
     color: Colors.white,
   );
 
-  static const TextStyle cardBody = TextStyle(
+  static TextStyle cardBody = GoogleFonts.poppins(
     fontSize: 14,
     fontWeight: FontWeight.normal,
     color: Colors.white70,
   );
   
-  static const TextStyle buttonText = TextStyle(
+  static TextStyle buttonText = GoogleFonts.poppins(
     fontSize: 10,
     fontWeight: FontWeight.w500,
     color: Colors.white70,

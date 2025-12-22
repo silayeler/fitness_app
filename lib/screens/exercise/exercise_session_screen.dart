@@ -47,6 +47,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   String _feedbackDetail = "Kameraya geçiniz.";
   bool _isGoodPosture = false;
   double _score = 0.0;
+  double _cumulativeScore = 0.0;
+  int _scoreCount = 0;
   int _reps = 0;
 
   // Audio Feedback
@@ -345,6 +347,38 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     return InputImage.fromBytes(bytes: bytes, metadata: inputImageMetadata);
   }
 
+  // Targets
+  final int _targetReps = 10;
+  final int _targetDuration = 30;
+
+  void _checkCompletion() {
+    if (_isCompleted) return;
+
+    bool reachedStart = false;
+    
+    // Check Targets based on Exercise Type
+    if (widget.exerciseName == 'Plank') {
+       if (_plankRemainingSeconds == 0) reachedStart = true;
+    } else {
+       // Rep based exercises
+       // Note: UI shows /10 hardcoded, so we use 10 as target
+       if (_reps >= _targetReps) reachedStart = true;
+    }
+
+    if (reachedStart) {
+      // Trigger Completion State
+      setState(() {
+        _isCompleted = true;
+        _stopwatch.stop();
+        _stopwatchTimer?.cancel();
+        _timer?.cancel();
+      });
+      
+      // Play Success Sound
+      flutterTts.speak("Tebrikler! Hedef tamamlandı.");
+    }
+  }
+
   Future<void> _processImage(InputImage inputImage) async {
     if (!_canProcess) return;
     if (_isBusy) return;
@@ -389,9 +423,18 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
              _feedbackStatus = result!.statusTitle;
              _feedbackDetail = result.feedback;
              _isGoodPosture = result.isGoodPosture;
-             _score = result.score ?? 0.0;
+             
+             // Calculate Average Score (Ignore 0.0/Idle states)
+             if (result.score != null && result.score! > 10) { // Filter out random low noise
+                _cumulativeScore += result.score!;
+                _scoreCount++;
+                _score = _cumulativeScore / _scoreCount;
+             }
+             
              _reps = _exerciseLogic.repCount;
            });
+           
+           _checkCompletion();
          }
 
          if (result != null && smoothedPose != null) {
@@ -561,11 +604,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                const Icon(Icons.emoji_events_rounded, color: Color(0xFF00C853), size: 64),
                const SizedBox(height: 24),
                const Text(
-                 "HEDEF TAMAMLANDI!",
+                  "HEDEF TAMAMLANDI!",
                  textAlign: TextAlign.center,
                  style: TextStyle(
                    fontSize: 24,
-                   fontWeight: FontWeight.w900,
+                   fontWeight: FontWeight.w800, // Reduced from w900
                    color: Colors.black87,
                  ),
                ),
@@ -812,7 +855,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                              Text.rich(
                                 TextSpan(
                                  children: [
-                                   TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w900)),
+                                   TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w800)), // Reduced from w900
                                    const TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
                                  ],
                                ),
@@ -831,9 +874,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                            Text(
-                            _feedbackStatus,
+                             _feedbackStatus,
                             style: TextStyle(
-                              fontWeight: FontWeight.w900,
+                              fontWeight: FontWeight.w800, // Reduced from w900
                               color: _isGoodPosture ? const Color(0xFF00C853) : Colors.red,
                               fontSize: 14
                             ),

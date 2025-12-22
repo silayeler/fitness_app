@@ -220,21 +220,51 @@ class _GaugePainter extends CustomPainter {
     final normalized = (needleValue - 15.0) / totalRange; // 0.0 to 1.0
     final angle = math.pi + (normalized * math.pi); // Pi to 2Pi
 
-    final needleLength = radius - 5;
-    final needleEnd = Offset(
+
+
+    // Needle (Custom Path)
+    final needlePath = Path();
+    final needleLength = radius - 15;
+    
+    // Needle pointing to angle
+    final tip = Offset(
       center.dx + needleLength * math.cos(angle),
       center.dy + needleLength * math.sin(angle),
     );
+    
+    // Perpendicular points at the base (center) for thickness
+    const baseWidth = 8.0;
+    final baseAngleLeft = angle - math.pi / 2;
+    final baseAngleRight = angle + math.pi / 2;
+    
+    final baseLeft = Offset(
+      center.dx + baseWidth * math.cos(baseAngleLeft),
+      center.dy + baseWidth * math.sin(baseAngleLeft),
+    );
+    
+    final baseRight = Offset(
+      center.dx + baseWidth * math.cos(baseAngleRight),
+      center.dy + baseWidth * math.sin(baseAngleRight),
+    );
+
+    needlePath.moveTo(baseLeft.dx, baseLeft.dy);
+    needlePath.lineTo(tip.dx, tip.dy);
+    needlePath.lineTo(baseRight.dx, baseRight.dy);
+    needlePath.close();
 
     final needlePaint = Paint()
-      ..color = isDark ? Colors.white : Colors.black87
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
+      ..color = isDark ? Colors.white : const Color(0xFF263238) // Dark Blue-Grey
+      ..style = PaintingStyle.fill;
 
-    canvas.drawLine(center, needleEnd, needlePaint);
+    // Shadow for depth
+    canvas.drawShadow(needlePath, Colors.black, 4, true);
+
+    canvas.drawPath(needlePath, needlePaint);
     
-    // Needle Center Dot
-    canvas.drawCircle(center, 8, needlePaint..style = PaintingStyle.fill);
+    // Needle Center Dot (Cap)
+    final capPaint = Paint()..color = isDark ? Colors.grey[300]! : Colors.white;
+    canvas.drawCircle(center, 6, capPaint);
+    canvas.drawCircle(center, 6, Paint()..color = Colors.black12..style=PaintingStyle.stroke..strokeWidth=1);
   }
 
   void _drawSegment(Canvas canvas, Offset center, double radius, double startBmi, double endBmi, Color color) {

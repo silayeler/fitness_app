@@ -86,7 +86,8 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
         elevation: 0,
         scrolledUnderElevation: 0,
         titleTextStyle: theme.textTheme.headlineMedium?.copyWith(
-          fontWeight: FontWeight.w900,
+          fontWeight: FontWeight.w700, // Reduced from w900
+          fontSize: 24, // Explicit size for consistency
           color: theme.colorScheme.onSurface,
           letterSpacing: -0.5,
         ),
@@ -134,8 +135,8 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                     children: [
                       Text(
                         'Merhaba, $currentName!',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
+                        style: theme.textTheme.headlineSmall?.copyWith( // Changed to headlineSmall for hierarchy
+                          fontWeight: FontWeight.w700,
                           color: const Color(0xFF00C853),
                         ),
                       ),
@@ -332,6 +333,7 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                       'Bugün hedefin:',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
+                        fontSize: 18, // Slightly larger for readability
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
@@ -402,6 +404,7 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                       'Son başarıların',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
+                        fontSize: 18,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -472,35 +475,89 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: _dailyProgress,
-                        minHeight: 10,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        valueColor:
-                            const AlwaysStoppedAnimation(Color(0xFF00C853)),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '$_dailyProgressText ($_dailyTargetText)',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[700],
+                    if (_dailyProgress > 0) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          value: _dailyProgress,
+                          minHeight: 10,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          valueColor:
+                              const AlwaysStoppedAnimation(Color(0xFF00C853)),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '$_dailyProgressText ($_dailyTargetText)',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Colors.grey[700],
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      // Empty State
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                        decoration: BoxDecoration(
+                           color: theme.scaffoldBackgroundColor,
+                           borderRadius: BorderRadius.circular(12),
+                           border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                             const Icon(Icons.rocket_launch_rounded, size: 20, color: Color(0xFF00C853)),
+                             const SizedBox(width: 8),
+                             Text(
+                               "Hadi başlayalım! 🚀",
+                               style: theme.textTheme.bodyMedium?.copyWith(
+                                 fontWeight: FontWeight.w600,
+                                 color: theme.colorScheme.onSurface,
+                               ),
+                             ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 24), 
-                    Center(
-                      child: Text(
-                        '"Her gün biraz daha iyi ol!"',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                          fontStyle: FontStyle.italic,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: theme.brightness == Brightness.dark
+                              ? [const Color(0xFF263238), const Color(0xFF37474F)]
+                              : [const Color(0xFFF5F5F5), const Color(0xFFEEEEEE)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.format_quote_rounded, color: const Color(0xFF00C853).withValues(alpha: 0.5), size: 32),
+                          const SizedBox(height: 12),
+                          Text(
+                            "Her gün biraz daha iyi ol!",
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontStyle: FontStyle.italic,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface.withValues(alpha: 0.85),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

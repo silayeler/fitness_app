@@ -43,14 +43,20 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
   
   // App State
   bool _isRecording = false;
+  bool _isCompleted = false; // Track if exercise is finished
   int _reps = 0;
   int _score = 98;
-  String _postureStatus = ""; // Empty means checking or good
+  
+  // Targets (Demo Values)
+  final int _targetReps = 12;      // Target for Squat/Weight/Mekik
+  final int _targetDuration = 30;  // Target for Plank (seconds)
+
+  String _postureStatus = ""; 
   String _feedbackMessage = "";
   
   // Timer State
   Timer? _timer;
-  int _elapsedSeconds = 0; // Standard recording timer
+  int _elapsedSeconds = 0; 
   
   // Plank Timer (Tracks good form duration)
   Timer? _plankTimer;
@@ -64,8 +70,199 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
   }
   
   // ... (Other standard methods)
+  
+  void _checkCompletion() {
+    if (_isCompleted) return;
+
+    bool reachedStart = false;
+    
+    // Check Targets based on Exercise Type
+    if (widget.exerciseName == 'Plank') {
+       if (_plankHoldDuration >= _targetDuration) reachedStart = true;
+    } else {
+       // Rep based exercises
+       if (_reps >= _targetReps) reachedStart = true;
+    }
+
+    if (reachedStart) {
+      _isCompleted = true;
+      _stopTimer();     // Stop recording timer
+      _plankTimer?.cancel(); // Stop plank timer
+      _isBusy = true;   // Stop processing new frames
+      
+      if (mounted) {
+         setState(() {});
+         _showCompletionDialog();
+      }
+    }
+  }
+
+  void _showCompletionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.all(24),
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 20,
+                  offset: Offset(0, 10),
+                )
+              ]
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                 // Trophy Icon (Green)
+                 Icon(Icons.emoji_events, size: 64, color: const Color(0xFF00C853)), // Green 
+                 
+                 SizedBox(height: 24),
+                 
+                 Text(
+                   "HEDEF TAMAMLANDI!", 
+                   style: TextStyle(
+                     color: Colors.black87,
+                     fontSize: 24,
+                     fontWeight: FontWeight.w900, // Black/Heavy font
+                     letterSpacing: 0.5,
+                     fontFamily: 'Roboto', // Assuming default font
+                   ),
+                   textAlign: TextAlign.center,
+                 ),
+                 
+                 SizedBox(height: 12),
+                 
+                 Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                   child: Text(
+                     "Harika iş çıkardın. Formun kusursuzdu!", 
+                     style: TextStyle(
+                       color: Colors.black54,
+                       fontSize: 16,
+                       height: 1.4,
+                     ),
+                     textAlign: TextAlign.center,
+                   ),
+                 ),
+                 
+                 SizedBox(height: 32),
+                 
+                 // Stats Container (Light Grey)
+                 Container(
+                   padding: EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                   decoration: BoxDecoration(
+                     color: const Color(0xFFF5F7F9), // Very light grey
+                     borderRadius: BorderRadius.circular(20),
+                   ),
+                   child: Row(
+                     children: [
+                       Expanded(
+                         child: Column(
+                           children: [
+                             Text(
+                               widget.exerciseName == 'Plank' ? "SÜRE" : "TEKRAR", 
+                               style: TextStyle(
+                                 color: Colors.black45, 
+                                 fontWeight: FontWeight.bold,
+                                 fontSize: 12,
+                                 letterSpacing: 1.0,
+                               )
+                             ),
+                             SizedBox(height: 8),
+                             Text(
+                               widget.exerciseName == 'Plank' ? "${_plankHoldDuration}sn" : "$_reps", 
+                               style: TextStyle(
+                                 color: Colors.black87,
+                                 fontSize: 22,
+                                 fontWeight: FontWeight.bold,
+                               )
+                             ),
+                           ],
+                         ),
+                       ),
+                       Container(width: 1, height: 40, color: Colors.black12),
+                       Expanded(
+                         child: Column(
+                           children: [
+                             Text(
+                               "PUAN", 
+                               style: TextStyle(
+                                 color: Colors.black45, 
+                                 fontWeight: FontWeight.bold,
+                                 fontSize: 12,
+                                 letterSpacing: 1.0,
+                               )
+                             ),
+                             SizedBox(height: 8),
+                             Text(
+                               "$_score", 
+                               style: TextStyle(
+                                 color: const Color(0xFF00C853), // Green for score
+                                 fontSize: 22,
+                                 fontWeight: FontWeight.bold,
+                               )
+                             ),
+                           ],
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
+                 
+                 SizedBox(height: 32),
+                 
+                 // Green Button
+                 GestureDetector(
+                   onTap: () {
+                     Navigator.pop(context); // Close Dialog
+                     _closeApp(); // Go back to menu
+                   },
+                   child: Container(
+                     width: double.infinity,
+                     padding: EdgeInsets.symmetric(vertical: 18),
+                     decoration: BoxDecoration(
+                       color: const Color(0xFF00C853),
+                       borderRadius: BorderRadius.circular(16),
+                       boxShadow: [
+                         BoxShadow(
+                           color: const Color(0xFF00C853).withOpacity(0.4),
+                           blurRadius: 10,
+                           offset: Offset(0, 4),
+                         )
+                       ]
+                     ),
+                     child: Center(
+                       child: Text(
+                         "KAYDET VE ÇIK", 
+                         style: TextStyle(
+                           color: Colors.white,
+                           fontSize: 16,
+                           fontWeight: FontWeight.bold,
+                           letterSpacing: 0.5,
+                         ),
+                       ),
+                     ),
+                   ),
+                 )
+              ],
+            ),
+          ),
+        );
+      }
+    );
+  }
 
   void _managePlankTimer(bool isGoodPosture) {
+     if (_isCompleted) return; // Stop if done
+
      if (isGoodPosture) {
         if (_plankTimer == null || !_plankTimer!.isActive) {
            _plankTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -73,9 +270,7 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
                  setState(() {
                     _plankHoldDuration++;
                  });
-                 if (_plankHoldDuration >= 30) {
-                    // Logic for completion can be added here (e.g. stop timer, show success)
-                 }
+                 _checkCompletion(); // Check every second
               }
            });
         }
@@ -339,15 +534,17 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
            );
            _customPaint = painter;
 
-           // Updating state for UI
+            // Updating state for UI
            if (mounted) {
               setState(() {
                 _postureStatus = status == "Bad" ? "Bad" : "Good";
                 _feedbackMessage = feedback;
-                if (_exerciseLogic is SquatLogic) {
-                   _reps = (_exerciseLogic as SquatLogic).repCount;
-                }
+                // Generic Rep Counting (Works for Squat, Weight, Mekik)
+                _reps = _exerciseLogic.repCount;
               });
+              
+              // Check if targets met
+              _checkCompletion();
            }
         } else {
            _customPaint = null;

@@ -93,18 +93,36 @@ class WeeklyActivityGraph extends StatelessWidget {
                       duration: const Duration(milliseconds: 1000),
                       curve: Curves.easeOutQuart,
                       builder: (context, value, _) {
-                        return Container(
-                          width: 12,
-                          height: 120 * value, // Max bar height 120
-                          decoration: BoxDecoration(
-                            color: isToday ? const Color(0xFF00C853) : const Color(0xFFE0E0E0),
-                            borderRadius: BorderRadius.circular(6),
-                            gradient: isToday ? const LinearGradient(
-                              colors: [Color(0xFF00C853), Color(0xFF69F0AE)],
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                            ) : null,
-                          ),
+                        return Column(
+                          children: [
+                            // Bar
+                            Container(
+                              width: 12,
+                              height: 120 * value,
+                              decoration: BoxDecoration(
+                                color: isToday ? const Color(0xFF00C853) : const Color(0xFFE0E0E0),
+                                borderRadius: BorderRadius.circular(6),
+                                gradient: isToday ? const LinearGradient(
+                                  colors: [Color(0xFF00C853), Color(0xFF69F0AE)],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ) : null,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            // Duration Label (e.g., 20)
+                            if (d['value'] > 0)
+                              Text(
+                                '${d['value']}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black54,
+                                ),
+                              )
+                            else 
+                              const SizedBox(height: 12) // Placeholder space
+                          ],
                         );
                       },
                     ),

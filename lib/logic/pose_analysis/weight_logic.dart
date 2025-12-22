@@ -14,12 +14,14 @@ class WeightLogic extends ExerciseLogic {
 
   @override
   AnalysisResult analyze(Pose pose) {
-    // General Standing Posture with Weight
+    // 1. Get Landmarks
     final leftEar = pose.landmarks[PoseLandmarkType.leftEar];
     final leftShoulder = pose.landmarks[PoseLandmarkType.leftShoulder];
     final leftHip = pose.landmarks[PoseLandmarkType.leftHip];
-    
-    if (leftEar == null || leftShoulder == null || leftHip == null) {
+    final leftKnee = pose.landmarks[PoseLandmarkType.leftKnee];
+
+    // Check visibility of critical points
+    if (leftEar == null || leftShoulder == null || leftHip == null || leftKnee == null) {
        return AnalysisResult(
          feedback: "Vücudun tam görünmüyor",
          statusTitle: "GÖRÜNÜM YOK",
@@ -27,42 +29,91 @@ class WeightLogic extends ExerciseLogic {
        );
     }
     
-    // Professional Alignment Check using Angles instead of Pixels
-    // Calculate angle between Ear, Shoulder, and Hip (Vertical Alignment)
-    // Ideally should be close to 180 degrees (straight vertical line)
-    double alignmentAngle = calculateAngle(leftEar, leftShoulder, leftHip);
+    // 2. Calculate Angles
+    
+    // A. Back Alignment (Ear - Shoulder - Hip)
+    // Should be ~180 regardless of leaning, implies straight spine
+    double backAngle = calculateAngle(leftEar, leftShoulder, leftHip);
 
+    // B. Hip Angle (Shoulder - Hip - Knee)
+    // 180 = Standing Straight
+    // < 130 = Hinging/Bending (Action)
+    double hipAngle = calculateAngle(leftShoulder, leftHip, leftKnee);
+
+    // 3. Posture Analysis (Safety First)
+    
+    // Check for Rounding Back (Slouching)
+    // If backAngle deviates too much from 180, it's bad posture
+    bool isBackStraight = backAngle >= 150; // Tolerance for neck tilt
+    
     Map<PoseLandmarkType, Color> jointColors = {};
     Map<PoseLandmarkType, String> overlays = {};
-    overlays[leftShoulder.type] = "${alignmentAngle.toInt()}°";
     
-    // Thresholds:
-    // 160-180: Excellent vertical alignment
-    // < 160: Leaning forward (Bad form for standing press etc.)
-    
-    // Dynamic Score: Target 180 (Vertical Alignment), Tolerance 5 (Strict), Sensitivity 4
-    double score = calculateScore(alignmentAngle, 180, tolerance: 5, sensitivity: 4.0);
+    overlays[leftHip.type] = "${hipAngle.toInt()}°";
+    overlays[leftShoulder.type] = isBackStraight ? "Dik" : "Eğik";
 
-    if (alignmentAngle < 155) { 
+    // Critical Error: Back Rounding
+    if (!isBackStraight) {
        jointColors[leftShoulder.type] = Colors.red;
-       jointColors[leftHip.type] = Colors.red;
+       jointColors[leftEar.type] = Colors.red;
        
        return AnalysisResult(
-         feedback: "Öne eğilme! Dik dur.",
+         feedback: "Sırtını DİK tut! Kambur durma.",
          statusTitle: "DİK DUR",
          isGoodPosture: false,
          jointColors: jointColors,
          overlayText: overlays,
-         score: score
+         score: 10.0, // Low score for safety violation
        );
     }
 
-    jointColors[leftShoulder.type] = const Color(0xFF00C853);
-    overlays[leftShoulder.type] = "İyi";
+    // 4. Repetition Logic (State Machine)
+    
+    // State 1: UP (Standing)
+    if (hipAngle > 165) {
+      if (repState == "down" && hasTriggered) {
+        repCount++;
+        hasTriggered = false;
+      }
+      repState = "up";
+    } 
+    // State 2: DOWN (Action / Hinging)
+    else if (hipAngle < 130) {
+      repState = "down";
+      hasTriggered = true;
+    }
+    
+    // 5. Feedback & Scoring
+    double score = calculateScore(backAngle, 180, tolerance: 20, sensitivity: 2.0);
+    
+    if (hipAngle < 130) {
+      // In action (Down phase)
+      jointColors[leftHip.type] = Colors.blue; 
+      return AnalysisResult(
+         feedback: "Güzel, şimdi kalk!",
+         statusTitle: "KALK",
+         isGoodPosture: true,
+         jointColors: jointColors,
+         overlayText: overlays,
+         score: score,
+      );
+    } else if (hipAngle < 165) {
+      // Transition
+       return AnalysisResult(
+         feedback: repState == "down" ? "Kalkmaya devam et" : "Eğil",
+         statusTitle: "DEVAM",
+         isGoodPosture: true,
+         jointColors: jointColors,
+         overlayText: overlays,
+         score: score,
+       );
+    }
 
+    // Standing / Start
+    jointColors[leftHip.type] = const Color(0xFF00C853);
     return AnalysisResult(
-         feedback: "Duruşun iyi",
-         statusTitle: "MÜKEMMEL",
+         feedback: "Harekete Başla",
+         statusTitle: "HAZIR",
          isGoodPosture: true,
          jointColors: jointColors,
          overlayText: overlays,

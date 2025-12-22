@@ -292,10 +292,11 @@ class _ExerciseCard extends StatelessWidget {
                     end: Alignment.bottomCenter,
                     colors: [
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.1),
-                      Colors.black.withValues(alpha: 0.9),
+                      Colors.black.withValues(alpha: 0.2), // Start darkening earlier
+                      Colors.black.withValues(alpha: 0.8), // Stronger bottom
+                      Colors.black.withValues(alpha: 0.95), // Max contrast at text level
                     ],
-                    stops: const [0.4, 0.7, 1.0],
+                    stops: const [0.0, 0.5, 0.8, 1.0],
                   ),
                 ),
               ),
@@ -369,21 +370,30 @@ class _ExerciseCard extends StatelessWidget {
                       ),
                     ),
                     // Visual Indicator -> Arrow (replaces Play button)
+                    // Visual Indicator -> Button
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Text(
-                          'BAŞLA',
-                          style: TextStyle(
-                            color: const Color(0xFF00C853),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.0,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20), // Pill shape
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'BAŞLA',
+                            style: TextStyle(
+                              color: const Color(0xFF00C853), // Green Text
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_forward_rounded, color: Color(0xFF00C853), size: 14),
-                      ],
+                          const SizedBox(width: 6),
+                          const Icon(Icons.arrow_forward_rounded, color: Color(0xFF00C853), size: 14),
+                        ],
+                      ),
                     )
                   ],
                 ),
