@@ -34,8 +34,8 @@ class SquatLogic extends ExerciseLogic {
     if (hip == null || knee == null || ankle == null || shoulder == null) {
        return AnalysisResult(
          feedback: "Vücudun tam görünmüyor",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM YOK",
-         isGoodPosture: false,
        );
     }
 
@@ -46,91 +46,56 @@ class SquatLogic extends ExerciseLogic {
         ankle.likelihood < minConfidence) {
        return AnalysisResult(
          feedback: "Kamera seni göremiyor.",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM YOK",
-         isGoodPosture: false,
        );
     }
 
     // 1. Knee Angle (Hip - Knee - Ankle)
     double kneeAngle = calculateAngle(hip, knee, ankle);
     
-    // Colors for specific joints
+    // Static Hold Logic (Wall Sit / Iso Squat)
+    // Target: Hold between 65 and 105 degrees.
+    bool isHolding = kneeAngle < 105;
+    
+    String message = "Çök ve Bekle!";
+    AnalysisStatus status = AnalysisStatus.neutral;
     Map<PoseLandmarkType, Color> jointColors = {};
-    Map<PoseLandmarkType, String> overlays = {};
 
-    // Analyze Knee Depth
-    if (kneeAngle < 65) {
-       // Deep
-       jointColors[knee.type] = Colors.blue;
-    } else if (kneeAngle < 105) {
-       // Parallel
-       jointColors[knee.type] = const Color(0xFF00C853);
+    if (isHolding) {
+        if (kneeAngle < 65) {
+             // Too Deep / Advanced
+             message = "Çok derin! Sabit kal.";
+             status = AnalysisStatus.correct;
+             jointColors[knee.type] = Colors.blue; 
+        } else {
+             // Perfect Range
+             message = "Harika! Bozma.";
+             status = AnalysisStatus.correct;
+             jointColors[knee.type] = const Color(0xFF00C853);
+        }
     } else {
-       // High
-       jointColors[knee.type] = Colors.orange;
+        // Standing or too high
+        status = AnalysisStatus.incorrect; // Pauses timer
+        jointColors[knee.type] = Colors.orange;
+        if (kneeAngle > 160) {
+             message = "Başla: Çökerek bekle";
+             status = AnalysisStatus.neutral;
+        } else {
+             message = "Daha aşağı in!";
+        }
     }
     
     // Dynamic Score Calculation
-    // Target: 90 degrees (Parallel). 
-    // Tolerance: 15 degrees (75-105 is excellent).
-    // Sensitivity: 1.5 points lost per degree off.
     double score = calculateScore(kneeAngle, 90, tolerance: 15, sensitivity: 1.5);
+    if (!isHolding) score = 0; // Only score when holding
 
-    // Repetition Counting Logic (State Machine)
-    // 1. Standing (Start/End)
-    if (kneeAngle > 160) {
-      if (repState == "down" && hasTriggered) {
-        repCount++;
-        hasTriggered = false; // Reset trigger
-      }
-      repState = "up";
-    } 
-    // 2. Squatting (Action)
-    else if (kneeAngle < 105) {
-      repState = "down";
-      hasTriggered = true; // Mark that user went deep enough
-    }
-
-    if (kneeAngle < 65) {
-       // Deep Squat (Advanced but good range)
-       jointColors[knee.type] = Colors.blue; // Blue for advanced/deep
-       return AnalysisResult(
-         feedback: "Tam derinlik! (Advanced)",
-         statusTitle: "DERİN",
-         isGoodPosture: true,
-         jointColors: jointColors,
-         overlayText: overlays,
-         score: score,
-       );
-    } else if (kneeAngle < 105) {
-       // Parallel (Target range for most)
-       return AnalysisResult(
-         feedback: "Mükemmel derinlik!",
-         statusTitle: "HARİKA",
-         isGoodPosture: true,
-         jointColors: jointColors,
-         overlayText: overlays,
-         score: score, 
-       );
-    } else if (kneeAngle < 140) {
-       // Descending or Ascending
-       return AnalysisResult(
-         feedback: repState == "down" ? "Kalk!" : "Daha aşağı in!", 
-         statusTitle: "DEVAM",
-         isGoodPosture: true, // It's part of the movement
-         jointColors: jointColors,
-         overlayText: overlays,
-         score: score
-       );
-    } 
-    
     return AnalysisResult(
-        feedback: "Harekete Başla",
-        statusTitle: "HAZIR",
-        isGoodPosture: true, 
-        jointColors: {knee.type: Colors.white, hip.type: Colors.white},
-        overlayText: overlays,
-        score: 0.0
+        feedback: message,
+        status: status, 
+        jointColors: jointColors,
+        score: score,
+        postureQuality: isHolding ? "İyi" : "Hatalı",
     );
   }
 }

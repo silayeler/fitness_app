@@ -92,6 +92,36 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
           letterSpacing: -0.5,
         ),
         actions: [
+          // Streak Counter
+          ValueListenableBuilder(
+            valueListenable: UserService().sessionListenable,
+            builder: (context, _, __) {
+              final stats = UserService().getStats();
+              final streak = stats['streak'] ?? '0 gün';
+              return Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE0B2), // Orange-ish bg
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF9800), size: 20),
+                    const SizedBox(width: 4),
+                    Text(
+                      streak,
+                      style: const TextStyle(
+                         fontWeight: FontWeight.bold,
+                         color: Color(0xFFE65100),
+                         fontSize: 12
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
@@ -102,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                    color: Colors.black.withValues(alpha: 0.05),
                    blurRadius: 10,
                    offset: const Offset(0, 5),
-                 ),
+                   ),
               ],
             ),
             child: IconButton(
@@ -232,7 +262,12 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
               const SizedBox(height: 24),
               
               // Weekly Graph (Added)
-              const WeeklyActivityGraph(),
+              ValueListenableBuilder(
+                valueListenable: UserService().sessionListenable,
+                builder: (context, box, _) {
+                  return const WeeklyActivityGraph();
+                },
+              ),
 
               const SizedBox(height: 24),
 

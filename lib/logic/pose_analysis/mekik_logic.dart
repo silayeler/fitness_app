@@ -31,8 +31,8 @@ class MekikLogic extends ExerciseLogic {
      if (hip == null || shoulder == null || knee == null) {
        return AnalysisResult(
          feedback: "Vücudun tam görünmüyor",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM YOK",
-         isGoodPosture: false,
        );
     }
 
@@ -65,8 +65,8 @@ class MekikLogic extends ExerciseLogic {
        jointColors[hip.type] = Colors.orange;
        return AnalysisResult(
          feedback: "Çok hızlı gitme!",
+         status: AnalysisStatus.incorrect,
          statusTitle: "YAVAŞLA",
-         isGoodPosture: true,
          jointColors: jointColors, 
          overlayText: overlays,
          score: score
@@ -76,8 +76,7 @@ class MekikLogic extends ExerciseLogic {
        jointColors[hip.type] = const Color(0xFF00C853);
        return AnalysisResult(
          feedback: "Harika sıkıştırma!",
-         statusTitle: "MÜKEMMEL",
-         isGoodPosture: true,
+         status: AnalysisStatus.correct,
          jointColors: jointColors,
          overlayText: overlays,
          score: score
@@ -87,8 +86,7 @@ class MekikLogic extends ExerciseLogic {
        jointColors[hip.type] = Colors.white;
        return AnalysisResult(
          feedback: "Kalk ve Sıkıştır!",
-         statusTitle: "HAZIR",
-         isGoodPosture: true, // Resting
+         status: AnalysisStatus.neutral,
          jointColors: jointColors,
          overlayText: overlays,
          score: 0.0 // Reset score when resting

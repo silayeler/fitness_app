@@ -122,12 +122,14 @@ class UserService {
      return _sessionBox.values.toList().reversed.toList();
   }
 
-  Future<void> addSession(String exerciseName, int durationMinutes, int accuracyScore) async {
+  Future<void> addSession(String exerciseName, int durationMinutes, int accuracyScore, {int? reps, int? durationSeconds}) async {
     final session = ExerciseSessionModel(
       exerciseName: exerciseName,
       durationMinutes: durationMinutes,
       date: DateTime.now(),
-      accuracyScore: accuracyScore, 
+      accuracyScore: accuracyScore,
+      reps: reps,
+      durationSeconds: durationSeconds,
     );
     await _sessionBox.add(session);
   }
@@ -144,14 +146,45 @@ class UserService {
     int m = totalMinutes % 60;
     String timeStr = '${h > 0 ? '${h}s ' : ''}${m}d';
     
-    // Streak calculation (Simplified)
-    // In a real app, check consecutive days. For now, just return a mock or count unique days.
-    Set<String> uniqueDays = allSessions.map((s) => "${s.date.year}-${s.date.month}-${s.date.day}").toSet();
+    // Streak Calculation (Robust)
+    // 1. Get unique days sorted descending
+    final uniqueDates = allSessions
+        .map((s) => DateTime(s.date.year, s.date.month, s.date.day))
+        .toSet()
+        .toList();
+    
+    uniqueDates.sort((a, b) => b.compareTo(a)); // Newest first
+
+    int currentStreak = 0;
+    if (uniqueDates.isNotEmpty) {
+      final today = DateTime.now();
+      final todayDate = DateTime(today.year, today.month, today.day);
+      final yesterdayDate = todayDate.subtract(const Duration(days: 1));
+
+      // Check if the most recent activity was today or yesterday to start the streak
+      if (uniqueDates.first == todayDate || uniqueDates.first == yesterdayDate) {
+        currentStreak = 1;
+        
+        // Check backwards
+        DateTime previousDate = uniqueDates.first;
+        for (int i = 1; i < uniqueDates.length; i++) {
+          final date = uniqueDates[i];
+          final difference = previousDate.difference(date).inDays;
+          
+          if (difference == 1) {
+            currentStreak++;
+            previousDate = date;
+          } else {
+            break; // Streak broken
+          }
+        }
+      }
+    }
     
     return {
       'sessions': '$totalCount',
       'time': timeStr,
-      'streak': '${uniqueDays.length} gün',
+      'streak': '$currentStreak gün',
     };
   }
   
@@ -185,7 +218,23 @@ class UserService {
 
   Future<void> addXp(int amount) async {
     final currentUser = user;
-    currentUser.currentXp += amount;
+    
+    // 1. Calculate Streak Bonus
+    // Robustly get current streak integer
+    final stats = getStats();
+    String streakStr = stats['streak'] ?? '0';
+    int streakDays = int.tryParse(streakStr.split(' ')[0]) ?? 0;
+    
+    double multiplier = 1.0;
+    if (streakDays >= 7) {
+      multiplier = 1.5; // 50% bonus for weekly streak
+    } else if (streakDays >= 3) {
+      multiplier = 1.2; // 20% bonus for 3-day streak
+    }
+    
+    int finalXp = (amount * multiplier).round();
+    
+    currentUser.currentXp += finalXp;
 
     // Level Calculation: Level = sqrt(XP / 100) + 1
     // 0 XP -> Lvl 1

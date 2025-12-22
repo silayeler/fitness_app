@@ -24,8 +24,8 @@ class WeightLogic extends ExerciseLogic {
     if (leftEar == null || leftShoulder == null || leftHip == null || leftKnee == null) {
        return AnalysisResult(
          feedback: "Vücudun tam görünmüyor",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM YOK",
-         isGoodPosture: false,
        );
     }
     
@@ -59,8 +59,8 @@ class WeightLogic extends ExerciseLogic {
        
        return AnalysisResult(
          feedback: "Sırtını DİK tut! Kambur durma.",
+         status: AnalysisStatus.incorrect,
          statusTitle: "DİK DUR",
-         isGoodPosture: false,
          jointColors: jointColors,
          overlayText: overlays,
          score: 10.0, // Low score for safety violation
@@ -91,8 +91,8 @@ class WeightLogic extends ExerciseLogic {
       jointColors[leftHip.type] = Colors.blue; 
       return AnalysisResult(
          feedback: "Güzel, şimdi kalk!",
+         status: AnalysisStatus.correct,
          statusTitle: "KALK",
-         isGoodPosture: true,
          jointColors: jointColors,
          overlayText: overlays,
          score: score,
@@ -101,8 +101,8 @@ class WeightLogic extends ExerciseLogic {
       // Transition
        return AnalysisResult(
          feedback: repState == "down" ? "Kalkmaya devam et" : "Eğil",
+         status: AnalysisStatus.correct,
          statusTitle: "DEVAM",
-         isGoodPosture: true,
          jointColors: jointColors,
          overlayText: overlays,
          score: score,
@@ -113,8 +113,7 @@ class WeightLogic extends ExerciseLogic {
     jointColors[leftHip.type] = const Color(0xFF00C853);
     return AnalysisResult(
          feedback: "Harekete Başla",
-         statusTitle: "HAZIR",
-         isGoodPosture: true,
+         status: AnalysisStatus.neutral,
          jointColors: jointColors,
          overlayText: overlays,
          score: score

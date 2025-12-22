@@ -24,7 +24,7 @@ class UserModelAdapter extends TypeAdapter<UserModel> {
       goal: fields[4] as String?,
       currentXp: fields[5] as int,
       currentLevel: fields[6] as int,
-      earnedBadges: (fields[7] as List).cast<String>(),
+      earnedBadges: (fields[7] as List?)?.cast<String>(),
     );
   }
 

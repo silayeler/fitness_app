@@ -199,16 +199,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 24),
             
-            // Level Progress Card
+            // Premium Level Progress Card
             ValueListenableBuilder(
               valueListenable: UserService().userListenable,
               builder: (context, box, _) {
                 final user = UserService().user; // Get fresh user
                 
-                // XP Calculation for current level display
-                // Level = sqrt(XP/100) + 1
-                // XP for current level start: (L-1)^2 * 100
-                // XP for next level start: L^2 * 100
                 int currentLvl = user.currentLevel;
                 int nextLvl = currentLvl + 1;
                 
@@ -216,18 +212,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 int xpForNext = 100 * currentLvl * currentLvl;
                 int xpNeeded = xpForNext - xpForCurrent;
                 int xpProgress = user.currentXp - xpForCurrent;
+                int xpRemaining = xpForNext - user.currentXp;
                 
                 double progress = (xpProgress / xpNeeded).clamp(0.0, 1.0);
 
                 return Container(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [const Color(0xFF6A1B9A), const Color(0xFF8E24AA)],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF2C3E50), Color(0xFF000000)], // Sleek Dark Luxe
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
                   child: Column(
                     children: [
@@ -238,58 +242,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'SEVİYE $currentLvl',
+                                "SEVİYE $currentLvl",
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Color(0xFFFFD700), // Gold
                                   fontWeight: FontWeight.w900,
-                                  fontSize: 24,
+                                  fontSize: 28,
+                                  letterSpacing: 1.0,
                                   fontStyle: FontStyle.italic,
                                 ),
                               ),
+                              const SizedBox(height: 4),
                               Text(
-                                '${user.currentXp} XP',
+                                "Şampiyon Yolunda", // Dynamic title could go here
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.all(8),
+                            height: 60,
+                            width: 60,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                                  blurRadius: 15,
+                                  spreadRadius: 2,
+                                )
+                              ]
                             ),
-                            child: const Icon(Icons.star_rounded, color: Colors.amber, size: 32),
+                            child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 32),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 12,
-                          backgroundColor: Colors.black.withValues(alpha: 0.2),
-                          valueColor: const AlwaysStoppedAnimation(Colors.amber),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      const SizedBox(height: 24),
+                      
+                      // Progress Bar
+                      Column(
                         children: [
-                           Text(
-                            'Seviye $currentLvl', 
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${user.currentXp} XP',
+                                style: const TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12
+                                ),
+                              ),
+                              Text(
+                                '${xpRemaining} XP kaldı',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5), 
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10
+                                ),
+                              ),
+                            ],
                           ),
-                           Text(
-                            'Seviye $nextLvl', 
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: SizedBox(
+                              height: 16,
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C853)), // Green highlights
+                              ),
+                            ),
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 );

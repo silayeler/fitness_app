@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io'; 
+import 'dart:ui'; // For ImageFilter 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
@@ -11,6 +12,11 @@ import '../../logic/pose_analysis/squat_logic.dart';
 import '../../logic/pose_analysis/plank_logic.dart';
 import '../../logic/pose_analysis/mekik_logic.dart';
 import '../../logic/pose_analysis/weight_logic.dart';
+import '../../logic/pose_analysis/pushup_logic.dart';
+import '../../logic/pose_analysis/lunge_logic.dart';
+import '../../logic/pose_analysis/jumping_jack_logic.dart';
+import '../../logic/pose_analysis/shoulder_press_logic.dart';
+import '../../logic/pose_analysis/glute_bridge_logic.dart';
 import '../../logic/pose_analysis/pose_smoother.dart';
 
 import 'package:auto_route/auto_route.dart';
@@ -23,9 +29,13 @@ class ExerciseSessionScreen extends StatefulWidget {
   const ExerciseSessionScreen({
     super.key,
     required this.exerciseName,
+    this.customReps,
+    this.customDuration,
   });
 
   final String exerciseName;
+  final int? customReps;
+  final int? customDuration;
 
   @override
   State<ExerciseSessionScreen> createState() => _ExerciseSessionScreenState();
@@ -96,9 +106,17 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   int _plankRemainingSeconds = 30;
   bool _isCompleted = false;
 
+  // Targets
+  int _targetReps = 10;
+  int _targetDuration = 30;
+
   @override
   void initState() {
     super.initState();
+    // Initialize targets from valid custom values or defaults
+    _targetReps = widget.customReps ?? 10;
+    _targetDuration = widget.customDuration ?? 30;
+    _plankRemainingSeconds = _targetDuration; // Sync duration for time-based
     WidgetsBinding.instance.addObserver(this);
     _initializeLogic();
     _initCamera();
@@ -123,6 +141,21 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
         break;
       case 'Ağırlık':
         _exerciseLogic = WeightLogic();
+        break;
+      case 'Şınav':
+        _exerciseLogic = PushUpLogic();
+        break;
+      case 'Lunge':
+        _exerciseLogic = LungeLogic();
+        break;
+      case 'Jumping Jacks':
+        _exerciseLogic = JumpingJackLogic();
+        break;
+      case 'Shoulder Press':
+        _exerciseLogic = ShoulderPressLogic();
+        break;
+      case 'Glute Bridge':
+        _exerciseLogic = GluteBridgeLogic();
         break;
       default:
         _exerciseLogic = SquatLogic();
@@ -192,6 +225,10 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   void _startCountdown() {
+    _timer?.cancel(); // Cancel any existing timer to prevent duplicates
+    _countdownValue = 3; // Reset value ensures consistent 3-2-1
+    _isCountdown = true; // Ensure visual state is active
+
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
         timer.cancel();
@@ -205,6 +242,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
           _startRecording();
         }
       });
+      
+      // Optional: Add a Tick Sound here if requested, but user only asked for "Turkish voice check" and "Timer fix".
     });
   }
 
@@ -213,15 +252,15 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       _isCountdown = false; 
     });
     
-    if (widget.exerciseName != 'Plank') {
+    if (!['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
       _stopwatch.start();
     }
     
     _stopwatchTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       
-      if (widget.exerciseName == 'Plank') {
-        // Plank Logic: Count down ONLY if posture is good
+      if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+        // Time-based Logic: Count down ONLY if posture is good
         if (_isGoodPosture) {
            setState(() {
              if (_plankRemainingSeconds > 0) {
@@ -262,15 +301,30 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       _stopwatch.stop();
       _stopwatchTimer?.cancel();
       
-      // Calculate duration
-      int durationMinutes;
-      if (widget.exerciseName == 'Plank') {
-        durationMinutes = 1; // Plank is fixed 30s target, we can log as 1 min or 0.5
+      // Calculate duration and reps
+      int durationSeconds = 0;
+      int? reps;
+
+      if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+        // Time-based: Target - Remaining
+        durationSeconds = _targetDuration - _plankRemainingSeconds;
       } else {
-        durationMinutes = _stopwatch.elapsed.inMinutes > 0 ? _stopwatch.elapsed.inMinutes : 1;
+        // Rep-based: Stopwatch elapsed
+        durationSeconds = _stopwatch.elapsed.inSeconds;
+        reps = _reps;
       }
 
-      await UserService().addSession(widget.exerciseName, durationMinutes, _score.toInt());
+      // Legacy minute calculation (minimum 1 minute for display compatibility if needed, using rounding up)
+      int durationMinutes = (durationSeconds / 60).ceil();
+      if (durationMinutes < 1) durationMinutes = 1; 
+
+      await UserService().addSession(
+        widget.exerciseName, 
+        durationMinutes, 
+        _score.toInt(),
+        reps: reps,
+        durationSeconds: durationSeconds,
+      );
       
       // Award XP (Gamification)
       // Dynamic: 10 XP per minute + 20 Base XP
@@ -348,8 +402,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   // Targets
-  final int _targetReps = 10;
-  final int _targetDuration = 30;
+  // Targets (Moved to state variables for customization)
+  // final int _targetReps = 10; 
+  // final int _targetDuration = 30;
 
   void _checkCompletion() {
     if (_isCompleted) return;
@@ -357,11 +412,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     bool reachedStart = false;
     
     // Check Targets based on Exercise Type
-    if (widget.exerciseName == 'Plank') {
+    // Check Targets based on Exercise Type
+    if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
        if (_plankRemainingSeconds == 0) reachedStart = true;
     } else {
        // Rep based exercises
-       // Note: UI shows /10 hardcoded, so we use 10 as target
+       // Rep based exercises
        if (_reps >= _targetReps) reachedStart = true;
     }
 
@@ -413,8 +469,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
          } else {
             result = AnalysisResult(
               feedback: "Kamera seni göremiyor.",
+              status: AnalysisStatus.neutral,
               statusTitle: "GÖRÜNÜM YOK",
-              isGoodPosture: false,
             );
          }
 
@@ -495,87 +551,183 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
   }
 
   Widget _buildCountdownView() {
-    return Container(
-      color: const Color(0xFFF4F5F7).withValues(alpha: 0.95),
-      width: double.infinity,
-      child: SafeArea(
-        child: Column(
-          children: [
-             Padding(
-               padding: const EdgeInsets.only(top: 40, left: 24, right: 24),
-               child: SizedBox(
-                width: double.infinity,
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text(
-                       widget.exerciseName,
-                       style: const TextStyle(
-                         fontSize: 48,
-                         fontWeight: FontWeight.w900,
-                         color: Colors.black12,
-                         height: 1.0,
-                       ),
-                     ),
-                     const Text(
-                       'Hazırlan...',
-                       style: TextStyle(
-                         fontSize: 32,
-                         fontWeight: FontWeight.w600,
-                         color: Colors.black45,
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-             ),
-             
-             const Spacer(),
-             
-             Container(
-               width: 140,
-               height: 140,
-               alignment: Alignment.center,
-               decoration: BoxDecoration(
-                 color: Colors.white,
-                 borderRadius: BorderRadius.circular(30),
-                 boxShadow: [
-                   BoxShadow(
-                     color: Colors.black.withValues(alpha: 0.1),
-                     blurRadius: 30,
-                     offset: const Offset(0, 15),
-                   ),
-                 ]
-               ),
-               child: Text(
-                 '$_countdownValue',
-                 style: const TextStyle(
-                   fontSize: 80,
-                   fontWeight: FontWeight.bold,
-                   color: Color(0xFFE0E0E0),
-                 ),
-               ),
-             ),
-             
-             const Spacer(),
-             
-             Padding(
-               padding: const EdgeInsets.all(24),
-               child: TextButton(
-                 onPressed: () => context.router.maybePop(),
-                 child: const Text(
-                    'İptal Et',
-                    style: TextStyle(
-                      color: Colors.black38,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500
-                    ),
-                 ),
-               ),
-             ),
-          ],
+    // Determine specific tip based on exercise name
+    String tip = "Telefonu sabitle ve ekranda görün.";
+    IconData tipIcon = Icons.accessibility_new_rounded;
+    
+    // Side Profile Exercises
+    if (['Squat', 'Lunge', 'Şınav', 'Plank', 'Glute Bridge', 'Mekik'].contains(widget.exerciseName)) {
+      tip = "Kameraya YAN profilini dönecek şekilde geç.";
+      tipIcon = Icons.switch_left_rounded;
+    } 
+    // Front Profile Exercises
+    else if (['Jumping Jacks', 'Shoulder Press', 'Ağırlık'].contains(widget.exerciseName)) {
+      tip = "Kameraya TAM KARŞIDAN bakacak şekilde geç.";
+      tipIcon = Icons.accessibility_rounded;
+    }
+
+    return Stack(
+      children: [
+        // 1. Blur Overlay (Glassmorphism)
+        Positioned.fill(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.6), // Darker overlay for contrast
+            ),
+          ),
         ),
-      ),
+
+        // 2. Content
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Spacer(flex: 2),
+                
+                // Header
+                Text(
+                  widget.exerciseName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 42,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.0,
+                    height: 1.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "HAZIRLAN",
+                  style: TextStyle(
+                    color: const Color(0xFF00C853).withValues(alpha: 0.9),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4.0,
+                  ),
+                ),
+
+                const Spacer(flex: 1),
+
+                // Main Countdown Number (Animated)
+                Container(
+                  width: 180,
+                  height: 180,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2), 
+                      width: 4
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00C853).withValues(alpha: 0.2),
+                        blurRadius: 50,
+                        spreadRadius: 10,
+                      )
+                    ],
+                  ),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      return ScaleTransition(scale: animation, child: child);
+                    },
+                    child: Text(
+                      '$_countdownValue',
+                      key: ValueKey<int>(_countdownValue),
+                      style: const TextStyle(
+                        fontSize: 100,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const Spacer(flex: 1),
+
+                // Preparation Tip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(tipIcon, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "İPUCU",
+                              style: TextStyle(
+                                color: Color(0xFF00C853),
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tip,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Spacer(flex: 2),
+
+                // Cancel Button
+                TextButton(
+                  onPressed: () => context.router.maybePop(),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    backgroundColor: Colors.white.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                  ),
+                  child: const Text(
+                    "İPTAL ET",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
   
@@ -624,7 +776,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                ),
                const SizedBox(height: 32),
                
-               // Stats
+               // Stats (Dynamic)
                Container(
                  padding: const EdgeInsets.all(16),
                  decoration: BoxDecoration(
@@ -635,10 +787,18 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                    children: [
                       Column(
-                        children: const [
-                          Text("SÜRE", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38)),
-                          SizedBox(height: 4),
-                          Text("30sn", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                        children: [
+                          Text(
+                             ['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName) ? "SÜRE" : "TEKRAR", 
+                             style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38)
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                             ['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName) 
+                               ? "${_targetDuration}sn" 
+                               : "$_reps", 
+                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)
+                          ),
                         ],
                       ),
                       Container(width: 1, height: 30, color: Colors.black12),
@@ -846,8 +1006,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                 // Reps and Feedback Row (Merged for compactness)
                 Row(
                   children: [
-                    // Rep Counter (Hidden for Plank)
-                    if (widget.exerciseName != 'Plank') ...[
+                    // Rep Counter (Hidden for Time-based)
+                    if (!['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) ...[
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                            children: [
@@ -856,7 +1016,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                                 TextSpan(
                                  children: [
                                    TextSpan(text: '$_reps', style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.w800)), // Reduced from w900
-                                   const TextSpan(text: '/10', style: TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
+                                   TextSpan(text: '/$_targetReps', style: const TextStyle(color: Colors.black38, fontSize: 16, fontWeight: FontWeight.w600)),
                                  ],
                                ),
                              ),

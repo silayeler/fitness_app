@@ -34,8 +34,8 @@ class PlankLogic extends ExerciseLogic {
     if (hip == null || shoulder == null || ankle == null) {
        return AnalysisResult(
          feedback: "Vücudun tam görünmüyor",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM YOK",
-         isGoodPosture: false,
        );
     }
 
@@ -44,8 +44,8 @@ class PlankLogic extends ExerciseLogic {
     if (hip.likelihood < 0.5 || shoulder.likelihood < 0.5 || ankle.likelihood < 0.5) {
        return AnalysisResult(
          feedback: "Net görünmüyorsun",
+         status: AnalysisStatus.neutral,
          statusTitle: "GÖRÜNÜM ZAYIF",
-         isGoodPosture: false,
        );
     }
 
@@ -58,8 +58,8 @@ class PlankLogic extends ExerciseLogic {
     if (dy > dx) {
        return AnalysisResult(
          feedback: "Yere yat ve plank pozisyonu al!",
+         status: AnalysisStatus.neutral,
          statusTitle: "POZİSYON AL",
-         isGoodPosture: false,
        );
     }
 
@@ -81,8 +81,7 @@ class PlankLogic extends ExerciseLogic {
        jointColors[hip.type] = const Color(0xFF00C853);
        return AnalysisResult(
          feedback: "Mükemmel düzlük! Böyle devam et.",
-         statusTitle: "MÜKEMMEL",
-         isGoodPosture: true,
+         status: AnalysisStatus.correct,
          jointColors: jointColors,
          overlayText: overlays,
          score: score
@@ -99,8 +98,7 @@ class PlankLogic extends ExerciseLogic {
       jointColors[hip.type] = Colors.red;
       return AnalysisResult(
          feedback: "Kalçanı biraz indir!",
-         statusTitle: "DÜZELT",
-         isGoodPosture: false,
+         status: AnalysisStatus.incorrect,
          jointColors: jointColors,
          overlayText: overlays,
          score: score
@@ -110,8 +108,7 @@ class PlankLogic extends ExerciseLogic {
       jointColors[hip.type] = Colors.red;
       return AnalysisResult(
          feedback: "Kalçanı kaldır!",
-         statusTitle: "DÜZELT",
-         isGoodPosture: false,
+         status: AnalysisStatus.incorrect,
          jointColors: jointColors,
          overlayText: overlays,
          score: score

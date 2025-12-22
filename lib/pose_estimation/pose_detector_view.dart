@@ -16,6 +16,11 @@ import 'package:fitness_app/logic/pose_analysis/squat_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/plank_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/mekik_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/weight_logic.dart';
+import 'package:fitness_app/logic/pose_analysis/pushup_logic.dart';
+import 'package:fitness_app/logic/pose_analysis/lunge_logic.dart';
+import 'package:fitness_app/logic/pose_analysis/jumping_jack_logic.dart';
+import 'package:fitness_app/logic/pose_analysis/shoulder_press_logic.dart';
+import 'package:fitness_app/logic/pose_analysis/glute_bridge_logic.dart';
 // import 'posture_analyzer.dart'; // No longer needed
 import 'package:fitness_app/logic/pose_analysis/analysis_result.dart';
 import 'ui_styles.dart';
@@ -296,6 +301,21 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
         break;
       case 'Ağırlık':
         _exerciseLogic = WeightLogic();
+        break;
+      case 'Şınav':
+        _exerciseLogic = PushUpLogic();
+        break;
+      case 'Lunge':
+        _exerciseLogic = LungeLogic();
+        break;
+      case 'Jumping Jacks':
+        _exerciseLogic = JumpingJackLogic();
+        break;
+      case 'Shoulder Press':
+        _exerciseLogic = ShoulderPressLogic();
+        break;
+      case 'Glute Bridge':
+        _exerciseLogic = GluteBridgeLogic();
         break;
       default:
         _exerciseLogic = SquatLogic(); // Default fallback

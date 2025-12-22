@@ -21,13 +21,15 @@ class ExerciseSessionModelAdapter extends TypeAdapter<ExerciseSessionModel> {
       durationMinutes: fields[1] as int,
       date: fields[2] as DateTime,
       accuracyScore: fields[3] as int?,
+      reps: fields[4] as int?,
+      durationSeconds: fields[5] as int?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ExerciseSessionModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.exerciseName)
       ..writeByte(1)
@@ -35,7 +37,11 @@ class ExerciseSessionModelAdapter extends TypeAdapter<ExerciseSessionModel> {
       ..writeByte(2)
       ..write(obj.date)
       ..writeByte(3)
-      ..write(obj.accuracyScore);
+      ..write(obj.accuracyScore)
+      ..writeByte(4)
+      ..write(obj.reps)
+      ..writeByte(5)
+      ..write(obj.durationSeconds);
   }
 
   @override

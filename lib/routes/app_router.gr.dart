@@ -28,6 +28,8 @@ abstract class _$AppRouter extends RootStackRouter {
         child: ExerciseSessionScreen(
           key: args.key,
           exerciseName: args.exerciseName,
+          customReps: args.customReps,
+          customDuration: args.customDuration,
         ),
       );
     },
@@ -106,12 +108,16 @@ class ExerciseSessionRoute extends PageRouteInfo<ExerciseSessionRouteArgs> {
   ExerciseSessionRoute({
     Key? key,
     required String exerciseName,
+    int? customReps,
+    int? customDuration,
     List<PageRouteInfo>? children,
   }) : super(
           ExerciseSessionRoute.name,
           args: ExerciseSessionRouteArgs(
             key: key,
             exerciseName: exerciseName,
+            customReps: customReps,
+            customDuration: customDuration,
           ),
           initialChildren: children,
         );
@@ -126,15 +132,21 @@ class ExerciseSessionRouteArgs {
   const ExerciseSessionRouteArgs({
     this.key,
     required this.exerciseName,
+    this.customReps,
+    this.customDuration,
   });
 
   final Key? key;
 
   final String exerciseName;
 
+  final int? customReps;
+
+  final int? customDuration;
+
   @override
   String toString() {
-    return 'ExerciseSessionRouteArgs{key: $key, exerciseName: $exerciseName}';
+    return 'ExerciseSessionRouteArgs{key: $key, exerciseName: $exerciseName, customReps: $customReps, customDuration: $customDuration}';
   }
 }
 

@@ -252,9 +252,36 @@ class HistoryScreen extends StatelessWidget {
                                                         ),
                                                       ),
                                                     ),
-                                                    title: Text(
-                                                      "Saat $timeStr • ${s.durationMinutes} dk",
-                                                      style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                                                    title: Builder(
+                                                      builder: (context) {
+                                                        String stats = "";
+                                                        if (s.reps != null && s.reps! > 0) {
+                                                          stats += "${s.reps} Tekrar";
+                                                        }
+                                                        
+                                                        // Duration Logic
+                                                        if (s.durationSeconds != null && s.durationSeconds! > 0) {
+                                                          if (stats.isNotEmpty) stats += " • ";
+                                                          
+                                                          int m = s.durationSeconds! ~/ 60;
+                                                          int sec = s.durationSeconds! % 60;
+                                                          
+                                                          if (m > 0) {
+                                                              stats += "${m}dk ${sec}sn";
+                                                          } else {
+                                                              stats += "${sec}sn";
+                                                          }
+                                                        } else {
+                                                          // Fallback
+                                                          if (stats.isNotEmpty) stats += " • ";
+                                                          stats += "${s.durationMinutes} dk";
+                                                        }
+
+                                                        return Text(
+                                                          "Saat $timeStr • $stats",
+                                                          style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                                                        );
+                                                      }
                                                     ),
                                                     trailing: Row(
                                                       mainAxisSize: MainAxisSize.min,

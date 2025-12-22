@@ -27,7 +27,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
     {
       'name': 'Plank',
       'description': 'Karın ve merkez bölgeyi kuvvetlendirir.',
-      'imagePath': 'assets/images/gorsel_3.png',
+      'imagePath': 'assets/images/gorsel_11.png', // New Image
       'color': Color(0xFF9C27B0),
       'category': 'Karın',
       'difficulty': 'Zor',
@@ -35,7 +35,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
     {
       'name': 'Mekik',
       'description': 'Üst karın kaslarını çalıştırır.',
-      'imagePath': 'assets/images/gorsel_4.png',
+      'imagePath': 'assets/images/gorsel_10.png', // New Image
       'color': Color(0xFFFF9800),
       'category': 'Karın',
       'difficulty': 'Kolay',
@@ -43,10 +43,50 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
     {
       'name': 'Ağırlık',
       'description': 'Genel vücut direnci ve güç artışı.',
-      'imagePath': 'assets/images/gorsel_1.png',
+      'imagePath': 'assets/images/gorsel_1.png', 
       'color': Color(0xFFF44336),
       'category': 'Güç',
       'difficulty': 'Zor',
+    },
+    {
+      'name': 'Şınav',
+      'description': 'Göğüs ve kol kaslarını geliştirir.',
+      'imagePath': 'assets/images/gorsel_9.png', // New Image
+      'color': Color(0xFF607D8B),
+      'category': 'Güç',
+      'difficulty': 'Orta',
+    },
+    {
+      'name': 'Lunge',
+      'description': 'Bacak ve kalça dengesini geliştirir.',
+      'imagePath': 'assets/images/gorsel_5.png', // New Image
+      'color': Color(0xFF4CAF50),
+      'category': 'Bacak',
+      'difficulty': 'Orta',
+    },
+    {
+      'name': 'Jumping Jacks',
+      'description': 'Tüm vücut kardiyo ve kondisyon.',
+      'imagePath': 'assets/images/gorsel_6.png', // New Image
+      'color': Color(0xFFFFC107),
+      'category': 'Kardiyo',
+      'difficulty': 'Kolay',
+    },
+    {
+      'name': 'Shoulder Press',
+      'description': 'Omuz ve üst vücut kuvveti.',
+      'imagePath': 'assets/images/gorsel_7.png', // New Image
+      'color': Color(0xFF795548),
+      'category': 'Güç',
+      'difficulty': 'Orta',
+    },
+    {
+      'name': 'Glute Bridge',
+      'description': 'Kalça ve bel sağlığı için.',
+      'imagePath': 'assets/images/gorsel_8.png', // New Image
+      'color': Color(0xFFE91E63),
+      'category': 'Bacak',
+      'difficulty': 'Kolay',
     },
   ];
 
@@ -76,10 +116,143 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
     super.dispose();
   }
 
+  void _showTargetDialog(BuildContext context, String exerciseName) {
+    // Determine type: Time-based or Rep-based
+    final isTimeBased = ['Plank', 'Glute Bridge', 'Squat'].contains(exerciseName);
+    
+    // Default values
+    double currentValue = isTimeBased ? 30.0 : 10.0;
+    double min = isTimeBased ? 10.0 : 5.0;
+    double max = isTimeBased ? 180.0 : 100.0;
+    int divisions = isTimeBased ? 17 : 19; // Steps of 10s or 5 reps roughly
+    String label = isTimeBased ? "Süre (Saniye)" : "Tekrar Sayısı";
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true, // Allow it to be more flexible
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              margin: const EdgeInsets.all(16), // Floating effect
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: SafeArea( // Prevent nav bar clash
+                child: Padding(
+                  padding: const EdgeInsets.all(20), // Reduced from 24
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Handle
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      Text(
+                        "$exerciseName Hedefi",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20, // Reduced from 24
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Ayarlamak için kaydırın.",
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 12, // Reduced from 14
+                        ),
+                      ),
+                      const SizedBox(height: 24), // Reduced from 32
+                      
+                      // Value Display
+                      Text(
+                        isTimeBased ? "${currentValue.toInt()} sn" : "${currentValue.toInt()} tekrar",
+                         style: const TextStyle(
+                          fontSize: 40, // Reduced from 48
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF00C853),
+                          letterSpacing: -1,
+                        ),
+                      ),
+                      
+                      // Slider
+                      Slider(
+                        value: currentValue,
+                        min: min,
+                        max: max,
+                        divisions: (max - min) ~/ (isTimeBased ? 10 : 5), // Step size 10s or 5 reps
+                        activeColor: const Color(0xFF00C853),
+                        label: currentValue.toInt().toString(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            currentValue = value;
+                          });
+                        },
+                      ),
+                      
+                      const SizedBox(height: 24), // Reduced from 32
+                      
+                      // Start Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50, // Reduced from 56
+                        child: ElevatedButton(
+                          onPressed: () {
+                             context.router.pop(); // Close modal
+                             context.router.push(
+                              ExerciseSessionRoute(
+                                exerciseName: exerciseName,
+                                customReps: isTimeBased ? null : currentValue.toInt(),
+                                customDuration: isTimeBased ? currentValue.toInt() : null,
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00C853),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            "BAŞLA",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = ['Tümü', 'Güç', 'Karın', 'Bacak'];
+    final categories = ['Tümü', 'Güç', 'Karın', 'Bacak', 'Kardiyo'];
 
     return Scaffold(
       extendBodyBehindAppBar: false,
@@ -225,9 +398,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
                     imagePath: exercise['imagePath'] as String,
                     category: exercise['category'] as String,
                     onTap: () {
-                      context.router.push(
-                        ExerciseSessionRoute(exerciseName: exercise['name']),
-                      );
+                      _showTargetDialog(context, exercise['name']);
                     },
                   );
                 },
