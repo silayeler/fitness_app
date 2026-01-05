@@ -14,7 +14,7 @@ import '../../logic/pose_analysis/mekik_logic.dart';
 import '../../logic/pose_analysis/weight_logic.dart';
 import '../../logic/pose_analysis/pushup_logic.dart';
 import '../../logic/pose_analysis/lunge_logic.dart';
-import '../../logic/pose_analysis/jumping_jack_logic.dart';
+
 import '../../logic/pose_analysis/shoulder_press_logic.dart';
 import '../../logic/pose_analysis/glute_bridge_logic.dart';
 import '../../logic/pose_analysis/pose_smoother.dart';
@@ -148,9 +148,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       case 'Lunge':
         _exerciseLogic = LungeLogic();
         break;
-      case 'Jumping Jacks':
-        _exerciseLogic = JumpingJackLogic();
-        break;
+
       case 'Shoulder Press':
         _exerciseLogic = ShoulderPressLogic();
         break;
@@ -252,23 +250,25 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       _isCountdown = false; 
     });
     
-    if (!['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+    if (!['Plank', 'Glute Bridge'].contains(widget.exerciseName)) {
       _stopwatch.start();
     }
     
     _stopwatchTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       
-      if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+      if (['Plank', 'Glute Bridge'].contains(widget.exerciseName)) {
         // Time-based Logic: Count down ONLY if posture is good
         if (_isGoodPosture) {
            setState(() {
              if (_plankRemainingSeconds > 0) {
                _plankRemainingSeconds--;
                
-               // Audio Alert for last 3 seconds (Trigger AFTER decrement to match UI)
+                  // Audio Alert for last 3 seconds (Trigger AFTER decrement to match UI)
                if (_plankRemainingSeconds > 0 && _plankRemainingSeconds <= 3) {
-                  flutterTts.speak("$_plankRemainingSeconds");
+                  if (UserService().soundEnabled) {
+                     flutterTts.speak("$_plankRemainingSeconds");
+                  }
                }
                
                // Format for Plank (Countdown)
@@ -305,7 +305,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       int durationSeconds = 0;
       int? reps;
 
-      if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+      if (['Plank', 'Glute Bridge'].contains(widget.exerciseName)) {
         // Time-based: Target - Remaining
         durationSeconds = _targetDuration - _plankRemainingSeconds;
       } else {
@@ -327,8 +327,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       );
       
       // Award XP (Gamification)
-      // Dynamic: 10 XP per minute + 20 Base XP
-      int earnedXp = 20 + (durationMinutes * 10);
+      // Dynamic: 10 XP per minute + 20 Base XP + Form Bonus (Score / 2)
+      int earnedXp = 20 + (durationMinutes * 10) + (_score.toInt() ~/ 2);
       await UserService().addXp(earnedXp);
     } catch (e) {
       debugPrint('Error finishing session: $e');
@@ -413,7 +413,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     
     // Check Targets based on Exercise Type
     // Check Targets based on Exercise Type
-    if (['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) {
+    if (['Plank', 'Glute Bridge'].contains(widget.exerciseName)) {
        if (_plankRemainingSeconds == 0) reachedStart = true;
     } else {
        // Rep based exercises
@@ -431,7 +431,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
       });
       
       // Play Success Sound
-      flutterTts.speak("Tebrikler! Hedef tamamlandı.");
+      if (UserService().soundEnabled) {
+        flutterTts.speak("Tebrikler! Hedef tamamlandı.");
+      }
+      
+
     }
   }
 
@@ -462,7 +466,10 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                if (_lastSpeechTime == null || now.difference(_lastSpeechTime!) > const Duration(seconds: 3)) {
                    _lastSpeechTime = now;
                    if (result.feedback.isNotEmpty) {
-                      flutterTts.speak(result.feedback);
+                      if (UserService().soundEnabled) {
+                        flutterTts.speak(result.feedback);
+                      }
+
                    }
                }
            }
@@ -556,12 +563,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
     IconData tipIcon = Icons.accessibility_new_rounded;
     
     // Side Profile Exercises
-    if (['Squat', 'Lunge', 'Şınav', 'Plank', 'Glute Bridge', 'Mekik'].contains(widget.exerciseName)) {
+    if (['Lunge', 'Şınav', 'Plank', 'Glute Bridge', 'Mekik', 'Squat'].contains(widget.exerciseName)) {
       tip = "Kameraya YAN profilini dönecek şekilde geç.";
       tipIcon = Icons.switch_left_rounded;
     } 
     // Front Profile Exercises
-    else if (['Jumping Jacks', 'Shoulder Press', 'Ağırlık'].contains(widget.exerciseName)) {
+    else if (['Shoulder Press', 'Ağırlık'].contains(widget.exerciseName)) {
       tip = "Kameraya TAM KARŞIDAN bakacak şekilde geç.";
       tipIcon = Icons.accessibility_rounded;
     }
@@ -789,12 +796,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                       Column(
                         children: [
                           Text(
-                             ['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName) ? "SÜRE" : "TEKRAR", 
+                             ['Plank', 'Glute Bridge'].contains(widget.exerciseName) ? "SÜRE" : "TEKRAR", 
                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black38)
                           ),
                           const SizedBox(height: 4),
                           Text(
-                             ['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName) 
+                             ['Plank', 'Glute Bridge'].contains(widget.exerciseName) 
                                ? "${_targetDuration}sn" 
                                : "$_reps", 
                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)
@@ -1007,7 +1014,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen>
                 Row(
                   children: [
                     // Rep Counter (Hidden for Time-based)
-                    if (!['Plank', 'Glute Bridge', 'Squat'].contains(widget.exerciseName)) ...[
+                    if (!['Plank', 'Glute Bridge'].contains(widget.exerciseName)) ...[
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                            children: [

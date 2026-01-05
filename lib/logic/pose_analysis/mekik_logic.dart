@@ -47,15 +47,16 @@ class MekikLogic extends ExerciseLogic {
 
     // Repetition Counting (State Machine)
     // 1. Lying Down (Start/End) -> Angle > 130
-    if (crunchAngle > 130) {
+    // 1. Lying Down (Start/End) -> Angle > 125
+    if (crunchAngle > 125) {
       if (repState == "up" && hasTriggered) {
         repCount++;
         hasTriggered = false;
       }
       repState = "down"; // Lying down is "down" state (neutral)
     } 
-    // 2. Crunched (Action) -> Angle < 100
-    else if (crunchAngle < 100) {
+    // 2. Crunched (Action) -> Angle < 115 (Includes 109deg case)
+    else if (crunchAngle < 115) {
       repState = "up"; // Crunched up
       hasTriggered = true;
     }
@@ -71,7 +72,7 @@ class MekikLogic extends ExerciseLogic {
          overlayText: overlays,
          score: score
        );
-    } else if (crunchAngle < 120) {
+    } else if (crunchAngle < 115) {
        // Good crunch (shoulders off ground)
        jointColors[hip.type] = const Color(0xFF00C853);
        return AnalysisResult(

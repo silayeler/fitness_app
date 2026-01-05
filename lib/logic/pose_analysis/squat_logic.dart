@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
 import 'exercise_logic.dart';
@@ -54,48 +55,67 @@ class SquatLogic extends ExerciseLogic {
     // 1. Knee Angle (Hip - Knee - Ankle)
     double kneeAngle = calculateAngle(hip, knee, ankle);
     
-    // Static Hold Logic (Wall Sit / Iso Squat)
-    // Target: Hold between 65 and 105 degrees.
-    bool isHolding = kneeAngle < 105;
-    
-    String message = "Çök ve Bekle!";
+    // Repetition Logic
+    // Standing: > 160 degrees
+    // Deep Squat: < 95 degrees (adjusted for average user)
+
+    // Repetition Logic (Mekik Style State Machine)
+    // Active Phase: Squat Down (< 100 degrees)
+    // Neutral Phase: Standing Up (> 165 degrees)
+
+    // 1. Standing Up (Neutral / End of Rep)
+    if (kneeAngle > 165) {
+      if (repState == "down" && hasTriggered) {
+        repCount++;
+        hasTriggered = false; // Consume trigger
+      }
+      repState = "up"; 
+    } 
+    // 2. Squatting Down (Active Phase)
+    else if (kneeAngle < 100) {
+      repState = "down";
+      hasTriggered = true; // Set Latch
+    }
+
+    // Feedback & Status
+    String message = "Başla";
     AnalysisStatus status = AnalysisStatus.neutral;
     Map<PoseLandmarkType, Color> jointColors = {};
 
-    if (isHolding) {
-        if (kneeAngle < 65) {
-             // Too Deep / Advanced
-             message = "Çok derin! Sabit kal.";
-             status = AnalysisStatus.correct;
-             jointColors[knee.type] = Colors.blue; 
-        } else {
-             // Perfect Range
-             message = "Harika! Bozma.";
-             status = AnalysisStatus.correct;
-             jointColors[knee.type] = const Color(0xFF00C853);
-        }
+    if (repState == "down") {
+      message = "Yüksel!";
+      status = AnalysisStatus.correct;
+      jointColors[knee.type] = const Color(0xFF00C853);
+    } else if (repState == "up" && hasTriggered == false) {
+      // Just standing, waiting for next rep
+      message = "Çök!";
+      status = AnalysisStatus.neutral;
+       jointColors[knee.type] = Colors.white;
     } else {
-        // Standing or too high
-        status = AnalysisStatus.incorrect; // Pauses timer
-        jointColors[knee.type] = Colors.orange;
-        if (kneeAngle > 160) {
-             message = "Başla: Çökerek bekle";
-             status = AnalysisStatus.neutral;
-        } else {
-             message = "Daha aşağı in!";
-        }
+      // Transition Area (between 100 and 165)
+      if (repState == "up") {
+         // Going down
+         message = "Daha aşağı!";
+         jointColors[knee.type] = Colors.orange;
+      } else {
+         // Going up
+         message = "Devam et!";
+         jointColors[knee.type] = const Color(0xFF00C853);
+      }
     }
     
-    // Dynamic Score Calculation
-    double score = calculateScore(kneeAngle, 90, tolerance: 15, sensitivity: 1.5);
-    if (!isHolding) score = 0; // Only score when holding
+    // Score based on depth when in motion (deeper is better score)
+    double score = 0;
+    if (kneeAngle < 120) {
+       score = calculateScore(kneeAngle, 90, tolerance: 30);
+    }
 
     return AnalysisResult(
         feedback: message,
         status: status, 
         jointColors: jointColors,
         score: score,
-        postureQuality: isHolding ? "İyi" : "Hatalı",
+        postureQuality: (kneeAngle < 90) ? "Mükemmel" : "İyi",
     );
   }
 }

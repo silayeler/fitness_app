@@ -217,19 +217,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 double progress = (xpProgress / xpNeeded).clamp(0.0, 1.0);
 
                 return Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2C3E50), Color(0xFF000000)], // Sleek Dark Luxe
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(32),
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                        color: theme.shadowColor.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -238,90 +234,84 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "SEVİYE $currentLvl",
-                                style: const TextStyle(
-                                  color: Color(0xFFFFD700), // Gold
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 28,
-                                  letterSpacing: 1.0,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Şampiyon Yolunda", // Dynamic title could go here
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            height: 60,
-                            width: 60,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFFD700), Color(0xFFFFA000)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                )
-                              ]
-                            ),
-                            child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 32),
-                          ),
+                           Column(
+                             crossAxisAlignment: CrossAxisAlignment.start,
+                             children: [
+                               Text(
+                                 "SEVİYE $currentLvl",
+                                 style: theme.textTheme.titleLarge?.copyWith(
+                                   fontWeight: FontWeight.w800,
+                                   color: theme.colorScheme.primary, // App Primary Color
+                                   letterSpacing: 0.5,
+                                 ),
+                               ),
+                               const SizedBox(height: 4),
+                               Text(
+                                 "Şampiyon Yolunda",
+                                 style: theme.textTheme.bodyMedium?.copyWith(
+                                   color: theme.colorScheme.onSurfaceVariant,
+                                 ),
+                               ),
+                             ],
+                           ),
+                           
+                           // Progress Ring
+                           Stack(
+                             alignment: Alignment.center,
+                             children: [
+                               SizedBox(
+                                 width: 64,
+                                 height: 64,
+                                 child: CircularProgressIndicator(
+                                   value: progress,
+                                   backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                   valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                                   strokeWidth: 6,
+                                   strokeCap: StrokeCap.round,
+                                 ),
+                               ),
+                               Text(
+                                 "${(progress * 100).toInt()}%",
+                                 style: theme.textTheme.labelSmall?.copyWith(
+                                   fontWeight: FontWeight.bold,
+                                   color: theme.colorScheme.primary,
+                                 ),
+                               ),
+                             ],
+                           )
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 20),
                       
-                      // Progress Bar
-                      Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                '${user.currentXp} XP',
-                                style: const TextStyle(
-                                  color: Colors.white, 
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12
-                                ),
-                              ),
-                              Text(
-                                '${xpRemaining} XP kaldı',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5), 
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: SizedBox(
-                              height: 16,
-                              child: LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                                valueColor: const AlwaysStoppedAnimation(Color(0xFF00C853)), // Green highlights
-                              ),
-                            ),
-                          ),
-                        ],
+                      // XP Bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                          valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                        ),
                       ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                           Text(
+                             "${user.currentXp} XP",
+                             style: theme.textTheme.labelSmall?.copyWith(
+                               fontWeight: FontWeight.bold,
+                               color: theme.colorScheme.onSurface,
+                             ),
+                           ),
+                           Text(
+                             "$xpRemaining XP kaldı",
+                             style: theme.textTheme.labelSmall?.copyWith(
+                               color: theme.colorScheme.onSurfaceVariant,
+                             ),
+                           ),
+                        ],
+                      )
                     ],
                   ),
                 );

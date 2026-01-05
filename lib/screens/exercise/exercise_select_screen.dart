@@ -64,14 +64,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
       'category': 'Bacak',
       'difficulty': 'Orta',
     },
-    {
-      'name': 'Jumping Jacks',
-      'description': 'Tüm vücut kardiyo ve kondisyon.',
-      'imagePath': 'assets/images/gorsel_6.png', // New Image
-      'color': Color(0xFFFFC107),
-      'category': 'Kardiyo',
-      'difficulty': 'Kolay',
-    },
+
     {
       'name': 'Shoulder Press',
       'description': 'Omuz ve üst vücut kuvveti.',
@@ -118,7 +111,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
 
   void _showTargetDialog(BuildContext context, String exerciseName) {
     // Determine type: Time-based or Rep-based
-    final isTimeBased = ['Plank', 'Glute Bridge', 'Squat'].contains(exerciseName);
+    final isTimeBased = ['Plank', 'Glute Bridge'].contains(exerciseName);
     
     // Default values
     double currentValue = isTimeBased ? 30.0 : 10.0;
@@ -252,7 +245,7 @@ class _ExerciseSelectScreenState extends State<ExerciseSelectScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final categories = ['Tümü', 'Güç', 'Karın', 'Bacak', 'Kardiyo'];
+    final categories = ['Tümü', 'Güç', 'Karın', 'Bacak'];
 
     return Scaffold(
       extendBodyBehindAppBar: false,

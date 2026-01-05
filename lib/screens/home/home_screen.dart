@@ -265,7 +265,7 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
               ValueListenableBuilder(
                 valueListenable: UserService().sessionListenable,
                 builder: (context, box, _) {
-                  return const WeeklyActivityGraph();
+                  return WeeklyActivityGraph();
                 },
               ),
 
@@ -280,65 +280,62 @@ class _HomeScreenState extends State<HomeScreen> with AutoRouteAwareStateMixin<H
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF1565C0), // Dark Blue
-                        const Color(0xFF1E88E5), // Lighter Blue
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: theme.cardColor, // Matches other cards
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1565C0).withValues(alpha: 0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
+                        color: theme.shadowColor.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
+                    border: Border.all(
+                      color: theme.dividerColor.withValues(alpha: 0.1),
+                    ),
                   ),
                   child: Row(
                     children: [
+                      // Icon Container
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: const Color(0xFF1565C0).withValues(alpha: 0.1), // Soft Blue bg
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: const Icon(
                           Icons.calendar_month_rounded,
-                          color: Colors.white,
-                          size: 32,
+                          color: Color(0xFF1565C0), // Primary Blue
+                          size: 28,
                         ),
                       ),
                       const SizedBox(width: 16),
+                      // Text Content
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               'Özel Programlar',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
+                              style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '30 Günlük meydan okumalar ve planlar.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 12,
+                              '30 Günlük meydan okumalar.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.white,
-                        size: 20,
+                      // Arrow
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: theme.colorScheme.onSurfaceVariant,
+                        size: 24,
                       ),
                     ],
                   ),

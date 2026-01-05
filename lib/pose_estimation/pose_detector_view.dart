@@ -18,7 +18,7 @@ import 'package:fitness_app/logic/pose_analysis/mekik_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/weight_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/pushup_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/lunge_logic.dart';
-import 'package:fitness_app/logic/pose_analysis/jumping_jack_logic.dart';
+
 import 'package:fitness_app/logic/pose_analysis/shoulder_press_logic.dart';
 import 'package:fitness_app/logic/pose_analysis/glute_bridge_logic.dart';
 // import 'posture_analyzer.dart'; // No longer needed
@@ -308,9 +308,7 @@ class _PoseDetectorViewState extends State<PoseDetectorView> with TickerProvider
       case 'Lunge':
         _exerciseLogic = LungeLogic();
         break;
-      case 'Jumping Jacks':
-        _exerciseLogic = JumpingJackLogic();
-        break;
+
       case 'Shoulder Press':
         _exerciseLogic = ShoulderPressLogic();
         break;

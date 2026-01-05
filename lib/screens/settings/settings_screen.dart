@@ -1,7 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import '../../services/user_service.dart';
-import '../../services/notification_service.dart';
+
 
 @RoutePage()
 class SettingsScreen extends StatelessWidget {
@@ -29,67 +29,13 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         children: [
           const SizedBox(height: 16),
-          const _SectionHeader(title: 'Bildirimler'),
-          ValueListenableBuilder(
-            valueListenable: UserService().settingsListenable,
-            builder: (context, box, _) {
-              final enabled = UserService().notificationsEnabled;
-              final hour = UserService().reminderHour;
-              final minute = UserService().reminderMinute;
-              final timeStr = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
-              return Column(
-                children: [
-                  SwitchListTile(
-                    secondary: const Icon(Icons.notifications_active_rounded),
-                    title: const Text('Günlük Hatırlatıcı'),
-                    value: enabled,
-                    onChanged: (val) {
-                      UserService().setNotificationsEnabled(val);
-                    },
-                  ),
-                  if (enabled)
-                    ListTile(
-                      leading: const Icon(Icons.access_time_rounded),
-                      title: const Text('Hatırlatma Zamanı'),
-                      subtitle: Text(timeStr),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () async {
-                        final now = TimeOfDay(hour: hour, minute: minute);
-                        final picked = await showTimePicker(
-                          context: context,
-                          initialTime: now,
-                        );
-                        if (picked != null) {
-                          UserService().setReminderTime(picked.hour, picked.minute);
-                        }
-                      },
-                    ),
-                  if (enabled)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () {
-                            NotificationService().showInstantNotification();
-                          },
-                          icon: const Icon(Icons.notifications_active, size: 16),
-                          label: const Text('Test Bildirimi Gönder'),
-                        ),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-          const Divider(),
           const _SectionHeader(title: 'Ses ve Geri Bildirim'),
           ValueListenableBuilder(
             valueListenable: UserService().settingsListenable,
             builder: (context, box, _) {
               final sound = UserService().soundEnabled;
-              final vibration = UserService().vibrationEnabled;
+
               return Column(
                 children: [
                   SwitchListTile(
@@ -102,14 +48,7 @@ class SettingsScreen extends StatelessWidget {
                       UserService().setSoundEnabled(val);
                     },
                   ),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.vibration_rounded),
-                    title: const Text('Titreşim'),
-                    value: vibration,
-                    onChanged: (val) {
-                      UserService().setVibrationEnabled(val);
-                    },
-                  ),
+
                 ],
               );
             },
@@ -185,10 +124,38 @@ class SettingsScreen extends StatelessWidget {
             title: Text('Versiyon'),
             subtitle: Text('1.0.0 - Beta'),
           ),
-          const ListTile(
-            leading: Icon(Icons.privacy_tip_outlined),
-            title: Text('Gizlilik Politikası'),
-            trailing: Icon(Icons.chevron_right_rounded),
+          ListTile(
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Gizlilik Politikası'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Gizlilik Politikası'),
+                  content: const SingleChildScrollView(
+                    child: Text(
+                      "Son Güncelleme: 01.01.2025\n\n"
+                      "1. Veri Toplama\n"
+                      "Bu uygulama (Posturify), egzersiz takibini en doğru şekilde sağlamak amacıyla kamera verilerini anlık olarak işler. Hiçbir görüntü veya video kaydı sunuculara gönderilmez, kaydedilmez veya üçüncü taraflarla paylaşılmaz. Tüm işlemler cihazınızda gerçekleşir.\n\n"
+                      "2. Kullanım Amacı\n"
+                      "Toplanan veriler sadece kişisel antrenman deneyiminizi iyileştirmek, duruş analizi yapmak ve egzersiz istatistiklerinizi (tekrar sayısı, süre, puan vb.) tutmak için kullanılır.\n\n"
+                      "3. Veri Güvenliği\n"
+                      "Kişisel profil bilgileriniz (isim, kilo, hedef) ve egzersiz geçmişiniz cihazınızın yerel depolama alanında güvenli bir şekilde saklanır.\n\n"
+                      "4. İletişim\n"
+                      "Uygulama ile ilgili sorularınız veya geri bildirimleriniz için geliştirici ekibiyle iletişime geçebilirsiniz.",
+                      style: TextStyle(fontSize: 14, height: 1.4),
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Kapat'),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -207,7 +174,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         title,
         style: TextStyle(
-          color: Theme.of(context).primaryColor,
+          color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),

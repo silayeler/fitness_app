@@ -1,0 +1,11 @@
+flutter_native_splash:
+  color: "#000000"
+  image: assets/logo/splash_logo_black.png
+  branding: assets/logo/splash_logo_black.png
+  android_12:
+    image: assets/logo/splash_logo_black.png
+    color: "#000000"
+    icon_background_color: "#000000"
+
+  ios: true
+  android: true
